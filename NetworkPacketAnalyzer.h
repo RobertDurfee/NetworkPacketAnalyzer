@@ -1,28 +1,33 @@
 #ifndef NETWORK_PACKET_ANALYZER_HEADER
 #define NETWORK_PACKET_ANALYZER_HEADER
 
+#define _CRT_SECURE_NO_WARNINGS
+
 #define PCAP_WHOLE_PACKET 0x010000
-#define NUMBER_OF_OPERATIONS 83
+#define NUMBER_OF_TAGS 83
 
-#include <time.h>
-#include "OperationProcessor.h"
-#include "Internet.h"
-#include <pcap.h>
+#include "InternetHeaders/Internet.h" //EthernetHeader, ARPHeader, IPV4Header, IPV6Header, TCPHeader, UDPHeader
+#include "FormatStringProcessor.h"    //FormatStringProcessor
+#include <math.h>                     //pow()
+#include <pcap.h>                     //PCAP_ERRBUF_SIZE, pcap_t, pcap_pkthdr, u_char, pcap_open_live(), pcap_close(), pcap_next_ex()
+#include <time.h>                     //tm, time_t, time(), localtime()
 
-int IntegerLength(unsigned int input)
+int IntegerLength(unsigned int tagFunctionInput)
 {
 	unsigned int output = 1;
 	unsigned int i = 1; unsigned long long j = 0;
 	while (j = (unsigned long long)pow(10, i++))
-		if (input >= j) output++;
+		if (tagFunctionInput >= j) output++;
 		else return output;
+	
+	return -1;
 }
-unsigned int StringToInteger(char * input)
+unsigned int StringToInteger(char * tagFunctionInput)
 {
 	int length = -1, counter = 0; unsigned int output = 0;
-	while (input[++length] != '\0');
+	while (tagFunctionInput[++length] != '\0');
 	while (--length >= 0 && ++counter)
-		output += (input[length] - 48) * (unsigned int)pow(10, counter - 1);
+		output += (tagFunctionInput[length] - 48) * (unsigned int)pow(10, counter - 1);
 
 	return output;
 }
@@ -30,9 +35,9 @@ unsigned int StringToInteger(char * input)
 class NetworkPacketAnalyzer
 {
 public:
-	NetworkPacketAnalyzer(char *, int);
+	NetworkPacketAnalyzer(char * deviceName, int timeout);
 	~NetworkPacketAnalyzer();
-	void Run(int, char *, char *);
+	void Run(int numberOfPackets, char * formatString, char * filterString);
 	tm * timeInfo;
 	EthernetHeader ethernet;
 	ARPHeader arp;
@@ -43,105 +48,108 @@ public:
 	bool bETH, bARP, bIPv4, bIPv6, bTCP, bUDP;
 
 private:
+	char ** definedTags;
+	void(**definedTagFunctions)(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
 	char * deviceName;
 	pcap_t * adapterHandle;
 	pcap_pkthdr * header; 
 	u_char * packet;
 	int startingPoint;
-	OperationProcessor * operationProcessor;
-	static void GENERAL_OPERATION_ROUTINE(void *, OperationNode *, char *);
+	FormatStringProcessor * formatStringProcessor;
 
-	static void IF_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void EQUALS_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void NOT_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void OR_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void AND_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void ODD_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void XOR_OPERATION_ROUTINE(void *, OperationNode *, char *);
+	static void GENERAL_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
 
-	static void LEADING_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void TRAILING_OPERATION_ROUTINE(void *, OperationNode *, char *);
+	static void IF_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void EQUALS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void NOT_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void OR_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void AND_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void ODD_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void XOR_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
 
-	static void HOUR_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void MINUTE_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void SECOND_OPERATION_ROUTINE(void *, OperationNode *, char *);
+	static void LEADING_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void TRAILING_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
 
-	static void ETHERNET_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void ETHERNET_DESTINATION_ADDRESS_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void ETHERNET_SOURCE_ADDRESS_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void ETHERNET_TYPE_OPERATION_ROUTINE(void *, OperationNode *, char *);
+	static void HOUR_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void MINUTE_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void SECOND_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
 
-	static void ARP_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void ARP_HARDWARE_TYPE_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void ARP_PROTOCOL_TYPE_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void ARP_HARDWARE_ADDRESS_LENGTH_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void ARP_PROTOCOL_ADDRESS_LENGTH_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void ARP_OPERATION_CODE_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void ARP_SENDER_MAC_ADDRESS_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void ARP_SENDER_IPV4_ADDRESS_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void ARP_TARGET_MAC_ADDRESS_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void ARP_TARGET_IPV4_ADDRESS_OPERATION_ROUTINE(void *, OperationNode *, char *);
+	static void ETHERNET_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void ETHERNET_DESTINATION_ADDRESS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void ETHERNET_SOURCE_ADDRESS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void ETHERNET_TYPE_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
 
-	static void IPV4_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV4_VERSIONS_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV4_VERSIONS_VERSION_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV4_VERSIONS_HEADER_LENGTH_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV4_DIFFERENTIATED_SERVICES_FIELD_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV4_DIFFERENTIATED_SERVICES_FIELD_DSCP_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV4_DIFFERENTIATED_SERVICES_FIELD_ECT_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV4_DIFFERENTIATED_SERVICES_FIELD_CE_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV4_TOTAL_LENGTH_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV4_IDENTIFICATION_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV4_FRAGMENT_FLAGS_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV4_FRAGMENT_FLAGS_DF_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV4_FRAGMENT_FLAGS_MF_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV4_FRAGMENT_FLAGS_OFFSET_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV4_TIME_TO_LIVE_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV4_NEXT_PROTOCOL_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV4_CHECKSUM_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV4_SOURCE_ADDRESS_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV4_DESTINATION_ADDRESS_OPERATION_ROUTINE(void *, OperationNode *, char *);
+	static void ARP_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void ARP_HARDWARE_TYPE_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void ARP_PROTOCOL_TYPE_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void ARP_HARDWARE_ADDRESS_LENGTH_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void ARP_PROTOCOL_ADDRESS_LENGTH_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void ARP_OPERATION_CODE_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void ARP_SENDER_MAC_ADDRESS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void ARP_SENDER_IPV4_ADDRESS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void ARP_TARGET_MAC_ADDRESS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void ARP_TARGET_IPV4_ADDRESS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
 
-	static void IPV6_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV6_VERSIONS_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV6_VERSIONS_VERSION_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV6_VERSIONS_DSCP_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV6_VERSIONS_ECT_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV6_VERSIONS_CE_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV6_VERISONS_FLOW_LABEL_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV6_PAYLOAD_LENGTH_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV6_NEXT_PROTOCOL_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV6_HOP_LIMIT_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV6_SOURCE_ADDRESS_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void IPV6_DESTINATION_ADDRESS_OPERATION_ROUTINE(void *, OperationNode *, char *);
+	static void IPV4_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV4_VERSIONS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV4_VERSIONS_VERSION_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV4_VERSIONS_HEADER_LENGTH_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV4_DIFFERENTIATED_SERVICES_FIELD_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV4_DIFFERENTIATED_SERVICES_FIELD_DSCP_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV4_DIFFERENTIATED_SERVICES_FIELD_ECT_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV4_DIFFERENTIATED_SERVICES_FIELD_CE_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV4_TOTAL_LENGTH_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV4_IDENTIFICATION_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV4_FRAGMENT_FLAGS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV4_FRAGMENT_FLAGS_DF_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV4_FRAGMENT_FLAGS_MF_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV4_FRAGMENT_FLAGS_OFFSET_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV4_TIME_TO_LIVE_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV4_NEXT_PROTOCOL_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV4_CHECKSUM_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV4_SOURCE_ADDRESS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV4_DESTINATION_ADDRESS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
 
-	static void TCP_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void TCP_SOURCE_PORT_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void TCP_DESTINATION_PORT_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void TCP_PAYLOAD_LENGTH_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void TCP_SEQUENCE_NUMBER_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void TCP_ACKNOWLEDGEMENT_NUMBER_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void TCP_DATA_OFFSET_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void TCP_FLAGS_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void TCP_FLAGS_FIN_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void TCP_FLAGS_SYN_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void TCP_FLAGS_RST_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void TCP_FLAGS_PSH_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void TCP_FLAGS_ACK_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void TCP_FLAGS_URG_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void TCP_FLAGS_ECE_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void TCP_FLAGS_CWR_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void TCP_WINDOW_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void TCP_CHECKSUM_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void TCP_URGENT_POINTER_OPERATION_ROUTINE(void *, OperationNode *, char *);
+	static void IPV6_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV6_VERSIONS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV6_VERSIONS_VERSION_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV6_VERSIONS_DSCP_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV6_VERSIONS_ECT_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV6_VERSIONS_CE_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV6_VERISONS_FLOW_LABEL_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV6_PAYLOAD_LENGTH_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV6_NEXT_PROTOCOL_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV6_HOP_LIMIT_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV6_SOURCE_ADDRESS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void IPV6_DESTINATION_ADDRESS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
 
-	static void UDP_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void UDP_SOURCE_PORT_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void UDP_DESTINATION_PORT_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void UDP_LENGTH_OPERATION_ROUTINE(void *, OperationNode *, char *);
-	static void UDP_CHECKSUM_OPERATION_ROUTINE(void *, OperationNode *, char *);
+	static void TCP_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void TCP_SOURCE_PORT_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void TCP_DESTINATION_PORT_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void TCP_PAYLOAD_LENGTH_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void TCP_SEQUENCE_NUMBER_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void TCP_ACKNOWLEDGEMENT_NUMBER_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void TCP_DATA_OFFSET_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void TCP_FLAGS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void TCP_FLAGS_FIN_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void TCP_FLAGS_SYN_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void TCP_FLAGS_RST_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void TCP_FLAGS_PSH_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void TCP_FLAGS_ACK_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void TCP_FLAGS_URG_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void TCP_FLAGS_ECE_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void TCP_FLAGS_CWR_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void TCP_WINDOW_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void TCP_CHECKSUM_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void TCP_URGENT_POINTER_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
 
-	static void CONTENT_OPERATION_ROUTINE(void *, OperationNode *, char *);
+	static void UDP_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void UDP_SOURCE_PORT_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void UDP_DESTINATION_PORT_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void UDP_LENGTH_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+	static void UDP_CHECKSUM_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
+
+	static void CONTENT_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput);
 };
 
 NetworkPacketAnalyzer::NetworkPacketAnalyzer(char * deviceName, int timeout)
@@ -150,279 +158,284 @@ NetworkPacketAnalyzer::NetworkPacketAnalyzer(char * deviceName, int timeout)
 
 	char ErrorBuffer[PCAP_ERRBUF_SIZE];
 
-	this->adapterHandle = pcap_open_live(deviceName, PCAP_WHOLE_PACKET, true, timeout, ErrorBuffer);
+	adapterHandle = pcap_open_live(deviceName, PCAP_WHOLE_PACKET, true, timeout, ErrorBuffer);
 
-	char ** operations = (char **)malloc(NUMBER_OF_OPERATIONS * sizeof(char *));
-	void (**operationFunctions)(void *, OperationNode *, char *) = (void (**)(void *, OperationNode *, char *))malloc(NUMBER_OF_OPERATIONS * sizeof(void* (*)(void*, OperationNode*, char*)));
+	definedTags = (char **)malloc(NUMBER_OF_TAGS * sizeof(char *));
+	definedTagFunctions = (void (**)(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput))malloc(NUMBER_OF_TAGS * sizeof(void* (*)(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)));
 	
-	operations[0] = "GENERAL";
+	definedTags[0] = "GENERAL";
 
-	operations[1] = "IF";
-	operations[2] = "EQUALS";
-	operations[3] = "NOT";
-	operations[4] = "OR";
-	operations[5] = "AND";
-	operations[6] = "ODD";
-	operations[7] = "XOR";
+	definedTags[1] = "IF";
+	definedTags[2] = "EQUALS";
+	definedTags[3] = "NOT";
+	definedTags[4] = "OR";
+	definedTags[5] = "AND";
+	definedTags[6] = "ODD";
+	definedTags[7] = "XOR";
 
-	operations[8] = "LEADING";
-	operations[9] = "TRAILING";
+	definedTags[8] = "LEADING";
+	definedTags[9] = "TRAILING";
 
-	operations[10] = "HOUR";
-	operations[11] = "MINUTE";
-	operations[12] = "SECOND";
+	definedTags[10] = "HOUR";
+	definedTags[11] = "MINUTE";
+	definedTags[12] = "SECOND";
 		
-	operations[13] = "ETHERNET";
-	operations[14] = "ETHERNET_DESTINATION_ADDRESS";
-	operations[15] = "ETHERNET_SOURCE_ADDRESS";
-	operations[16] = "ETHERNET_TYPE";
+	definedTags[13] = "ETHERNET";
+	definedTags[14] = "ETHERNET_DESTINATION_ADDRESS";
+	definedTags[15] = "ETHERNET_SOURCE_ADDRESS";
+	definedTags[16] = "ETHERNET_TYPE";
 
-	operations[17] = "ARP";
-	operations[18] = "ARP_HARDWARE_TYPE";
-	operations[19] = "ARP_PROTOCOL_TYPE";
-	operations[20] = "ARP_HARDWARE_ADDRESS_LENGTH";
-	operations[21] = "ARP_PROTOCOL_ADDRESS_LENGTH";
-	operations[22] = "ARP_OPERATION_CODE";
-	operations[23] = "ARP_SENDER_MAC_ADDRESS";
-	operations[24] = "ARP_SENDER_IPV4_ADDRESS";
-	operations[25] = "ARP_TARGET_MAC_ADDRESS";
-	operations[26] = "ARP_TARGET_IPV4_ADDRESS";
+	definedTags[17] = "ARP";
+	definedTags[18] = "ARP_HARDWARE_TYPE";
+	definedTags[19] = "ARP_PROTOCOL_TYPE";
+	definedTags[20] = "ARP_HARDWARE_ADDRESS_LENGTH";
+	definedTags[21] = "ARP_PROTOCOL_ADDRESS_LENGTH";
+	definedTags[22] = "ARP_OPERATION_CODE";
+	definedTags[23] = "ARP_SENDER_MAC_ADDRESS";
+	definedTags[24] = "ARP_SENDER_IPV4_ADDRESS";
+	definedTags[25] = "ARP_TARGET_MAC_ADDRESS";
+	definedTags[26] = "ARP_TARGET_IPV4_ADDRESS";
 
-	operations[27] = "IPV4";
-	operations[28] = "IPV4_VERSIONS";
-	operations[29] = "IPV4_VERSIONS_VERSION";
-	operations[30] = "IPV4_VERSIONS_HEADER_LENGTH";
-	operations[31] = "IPV4_DIFFERENTIATED_SERVICES_FIELD";
-	operations[32] = "IPV4_DIFFERENTIATED_SERVICES_FIELD_DSCP";
-	operations[33] = "IPV4_DIFFERENTIATED_SERVICES_FIELD_ECT";
-	operations[34] = "IPV4_DIFFERENTIATED_SERVICES_FIELD_CE";
-	operations[35] = "IPV4_TOTAL_LENGTH";
-	operations[36] = "IPV4_IDENTIFICATION";
-	operations[37] = "IPV4_FRAGMENT_FLAGS";
-	operations[38] = "IPV4_FRAGMENT_FLAGS_DF";
-	operations[39] = "IPV4_FRAGMENT_FLAGS_MF";
-	operations[40] = "IPV4_FRAGMENT_FLAGS_OFFSET";
-	operations[41] = "IPV4_TIME_TO_LIVE";
-	operations[42] = "IPV4_NEXT_PROTOCOL";
-	operations[43] = "IPV4_CHECKSUM";
-	operations[44] = "IPV4_SOURCE_ADDRESS";
-	operations[45] = "IPV4_DESTINATION_ADDRESS";
+	definedTags[27] = "IPV4";
+	definedTags[28] = "IPV4_VERSIONS";
+	definedTags[29] = "IPV4_VERSIONS_VERSION";
+	definedTags[30] = "IPV4_VERSIONS_HEADER_LENGTH";
+	definedTags[31] = "IPV4_DIFFERENTIATED_SERVICES_FIELD";
+	definedTags[32] = "IPV4_DIFFERENTIATED_SERVICES_FIELD_DSCP";
+	definedTags[33] = "IPV4_DIFFERENTIATED_SERVICES_FIELD_ECT";
+	definedTags[34] = "IPV4_DIFFERENTIATED_SERVICES_FIELD_CE";
+	definedTags[35] = "IPV4_TOTAL_LENGTH";
+	definedTags[36] = "IPV4_IDENTIFICATION";
+	definedTags[37] = "IPV4_FRAGMENT_FLAGS";
+	definedTags[38] = "IPV4_FRAGMENT_FLAGS_DF";
+	definedTags[39] = "IPV4_FRAGMENT_FLAGS_MF";
+	definedTags[40] = "IPV4_FRAGMENT_FLAGS_OFFSET";
+	definedTags[41] = "IPV4_TIME_TO_LIVE";
+	definedTags[42] = "IPV4_NEXT_PROTOCOL";
+	definedTags[43] = "IPV4_CHECKSUM";
+	definedTags[44] = "IPV4_SOURCE_ADDRESS";
+	definedTags[45] = "IPV4_DESTINATION_ADDRESS";
 
-	operations[46] = "IPV6";
-	operations[47] = "IPV6_VERSIONS";
-	operations[48] = "IPV6_VERSIONS_VERSION";
-	operations[49] = "IPV6_VERSIONS_DSCP";
-	operations[50] = "IPV6_VERSIONS_ECT";
-	operations[51] = "IPV6_VERSIONS_CE";
-	operations[52] = "IPV6_VERISONS_FLOW_LABEL";
-	operations[53] = "IPV6_PAYLOAD_LENGTH";
-	operations[54] = "IPV6_NEXT_PROTOCOL";
-	operations[55] = "IPV6_HOP_LIMIT";
-	operations[56] = "IPV6_SOURCE_ADDRESS";
-	operations[57] = "IPV6_DESTINATION_ADDRESS";
+	definedTags[46] = "IPV6";
+	definedTags[47] = "IPV6_VERSIONS";
+	definedTags[48] = "IPV6_VERSIONS_VERSION";
+	definedTags[49] = "IPV6_VERSIONS_DSCP";
+	definedTags[50] = "IPV6_VERSIONS_ECT";
+	definedTags[51] = "IPV6_VERSIONS_CE";
+	definedTags[52] = "IPV6_VERISONS_FLOW_LABEL";
+	definedTags[53] = "IPV6_PAYLOAD_LENGTH";
+	definedTags[54] = "IPV6_NEXT_PROTOCOL";
+	definedTags[55] = "IPV6_HOP_LIMIT";
+	definedTags[56] = "IPV6_SOURCE_ADDRESS";
+	definedTags[57] = "IPV6_DESTINATION_ADDRESS";
 
-	operations[58] = "TCP";
-	operations[59] = "TCP_SOURCE_PORT";
-	operations[60] = "TCP_DESTINATION_PORT";
-	operations[61] = "TCP_PAYLOAD_LENGTH";
-	operations[62] = "TCP_ACKNOWLEDGEMENT_NUMBER";
-	operations[63] = "TCP_SEQUENCE_NUMBER";
-	operations[64] = "TCP_DATA_OFFSET";
-	operations[65] = "TCP_FLAGS";
-	operations[66] = "TCP_FLAGS_FIN";
-	operations[67] = "TCP_FLAGS_SYN";
-	operations[68] = "TCP_FLAGS_RST";
-	operations[69] = "TCP_FLAGS_PSH";
-	operations[70] = "TCP_FLAGS_ACK";
-	operations[71] = "TCP_FLAGS_URG";
-	operations[72] = "TCP_FLAGS_ECE";
-	operations[73] = "TCP_FLAGS_CWR";
-	operations[74] = "TCP_WINDOW";
-	operations[75] = "TCP_CHECKSUM";
-	operations[76] = "TCP_URGENT_POINTER";
+	definedTags[58] = "TCP";
+	definedTags[59] = "TCP_SOURCE_PORT";
+	definedTags[60] = "TCP_DESTINATION_PORT";
+	definedTags[61] = "TCP_PAYLOAD_LENGTH";
+	definedTags[62] = "TCP_ACKNOWLEDGEMENT_NUMBER";
+	definedTags[63] = "TCP_SEQUENCE_NUMBER";
+	definedTags[64] = "TCP_DATA_OFFSET";
+	definedTags[65] = "TCP_FLAGS";
+	definedTags[66] = "TCP_FLAGS_FIN";
+	definedTags[67] = "TCP_FLAGS_SYN";
+	definedTags[68] = "TCP_FLAGS_RST";
+	definedTags[69] = "TCP_FLAGS_PSH";
+	definedTags[70] = "TCP_FLAGS_ACK";
+	definedTags[71] = "TCP_FLAGS_URG";
+	definedTags[72] = "TCP_FLAGS_ECE";
+	definedTags[73] = "TCP_FLAGS_CWR";
+	definedTags[74] = "TCP_WINDOW";
+	definedTags[75] = "TCP_CHECKSUM";
+	definedTags[76] = "TCP_URGENT_POINTER";
 
-	operations[77] = "UDP";
-	operations[78] = "UDP_SOURCE_PORT";
-	operations[79] = "UDP_DESTINATION_PORT";
-	operations[80] = "UDP_LENGTH";
-	operations[81] = "UDP_CHECKSUM";
-	operations[82] = "CONTENT";
+	definedTags[77] = "UDP";
+	definedTags[78] = "UDP_SOURCE_PORT";
+	definedTags[79] = "UDP_DESTINATION_PORT";
+	definedTags[80] = "UDP_LENGTH";
+	definedTags[81] = "UDP_CHECKSUM";
+	definedTags[82] = "CONTENT";
 	
-	operationFunctions[0] = &this->GENERAL_OPERATION_ROUTINE;
+	definedTagFunctions[0] = &GENERAL_TAG_FUNCTION;
 
-	operationFunctions[1] = &this->IF_OPERATION_ROUTINE;
-	operationFunctions[2] = &this->EQUALS_OPERATION_ROUTINE;
-	operationFunctions[3] = &this->NOT_OPERATION_ROUTINE;
-	operationFunctions[4] = &this->OR_OPERATION_ROUTINE;
-	operationFunctions[5] = &this->AND_OPERATION_ROUTINE;
-	operationFunctions[6] = &this->ODD_OPERATION_ROUTINE;
-	operationFunctions[7] = &this->XOR_OPERATION_ROUTINE;
+	definedTagFunctions[1] = &IF_TAG_FUNCTION;
+	definedTagFunctions[2] = &EQUALS_TAG_FUNCTION;
+	definedTagFunctions[3] = &NOT_TAG_FUNCTION;
+	definedTagFunctions[4] = &OR_TAG_FUNCTION;
+	definedTagFunctions[5] = &AND_TAG_FUNCTION;
+	definedTagFunctions[6] = &ODD_TAG_FUNCTION;
+	definedTagFunctions[7] = &XOR_TAG_FUNCTION;
 
-	operationFunctions[8] = &this->LEADING_OPERATION_ROUTINE;
-	operationFunctions[9] = &this->TRAILING_OPERATION_ROUTINE;
+	definedTagFunctions[8] = &LEADING_TAG_FUNCTION;
+	definedTagFunctions[9] = &TRAILING_TAG_FUNCTION;
 
-	operationFunctions[10] = &this->HOUR_OPERATION_ROUTINE;
-	operationFunctions[11] = &this->MINUTE_OPERATION_ROUTINE;
-	operationFunctions[12] = &this->SECOND_OPERATION_ROUTINE;
+	definedTagFunctions[10] = &HOUR_TAG_FUNCTION;
+	definedTagFunctions[11] = &MINUTE_TAG_FUNCTION;
+	definedTagFunctions[12] = &SECOND_TAG_FUNCTION;
 	
-	operationFunctions[13] = &this->ETHERNET_OPERATION_ROUTINE;
-	operationFunctions[14] = &this->ETHERNET_DESTINATION_ADDRESS_OPERATION_ROUTINE;
-	operationFunctions[15] = &this->ETHERNET_SOURCE_ADDRESS_OPERATION_ROUTINE;
-	operationFunctions[16] = &this->ETHERNET_TYPE_OPERATION_ROUTINE;
+	definedTagFunctions[13] = &ETHERNET_TAG_FUNCTION;
+	definedTagFunctions[14] = &ETHERNET_DESTINATION_ADDRESS_TAG_FUNCTION;
+	definedTagFunctions[15] = &ETHERNET_SOURCE_ADDRESS_TAG_FUNCTION;
+	definedTagFunctions[16] = &ETHERNET_TYPE_TAG_FUNCTION;
 
-	operationFunctions[17] = &this->ARP_OPERATION_ROUTINE;
-	operationFunctions[18] = &this->ARP_HARDWARE_TYPE_OPERATION_ROUTINE;
-	operationFunctions[19] = &this->ARP_PROTOCOL_TYPE_OPERATION_ROUTINE;
-	operationFunctions[20] = &this->ARP_HARDWARE_ADDRESS_LENGTH_OPERATION_ROUTINE;
-	operationFunctions[21] = &this->ARP_PROTOCOL_ADDRESS_LENGTH_OPERATION_ROUTINE;
-	operationFunctions[22] = &this->ARP_OPERATION_CODE_OPERATION_ROUTINE;
-	operationFunctions[23] = &this->ARP_SENDER_MAC_ADDRESS_OPERATION_ROUTINE;
-	operationFunctions[24] = &this->ARP_SENDER_IPV4_ADDRESS_OPERATION_ROUTINE;
-	operationFunctions[25] = &this->ARP_TARGET_MAC_ADDRESS_OPERATION_ROUTINE;
-	operationFunctions[26] = &this->ARP_TARGET_IPV4_ADDRESS_OPERATION_ROUTINE;
+	definedTagFunctions[17] = &ARP_TAG_FUNCTION;
+	definedTagFunctions[18] = &ARP_HARDWARE_TYPE_TAG_FUNCTION;
+	definedTagFunctions[19] = &ARP_PROTOCOL_TYPE_TAG_FUNCTION;
+	definedTagFunctions[20] = &ARP_HARDWARE_ADDRESS_LENGTH_TAG_FUNCTION;
+	definedTagFunctions[21] = &ARP_PROTOCOL_ADDRESS_LENGTH_TAG_FUNCTION;
+	definedTagFunctions[22] = &ARP_OPERATION_CODE_TAG_FUNCTION;
+	definedTagFunctions[23] = &ARP_SENDER_MAC_ADDRESS_TAG_FUNCTION;
+	definedTagFunctions[24] = &ARP_SENDER_IPV4_ADDRESS_TAG_FUNCTION;
+	definedTagFunctions[25] = &ARP_TARGET_MAC_ADDRESS_TAG_FUNCTION;
+	definedTagFunctions[26] = &ARP_TARGET_IPV4_ADDRESS_TAG_FUNCTION;
 
-	operationFunctions[27] = &this->IPV4_OPERATION_ROUTINE;
-	operationFunctions[28] = &this->IPV4_VERSIONS_OPERATION_ROUTINE;
-	operationFunctions[29] = &this->IPV4_VERSIONS_VERSION_OPERATION_ROUTINE;
-	operationFunctions[30] = &this->IPV4_VERSIONS_HEADER_LENGTH_OPERATION_ROUTINE;
-	operationFunctions[31] = &this->IPV4_DIFFERENTIATED_SERVICES_FIELD_OPERATION_ROUTINE;
-	operationFunctions[32] = &this->IPV4_DIFFERENTIATED_SERVICES_FIELD_DSCP_OPERATION_ROUTINE;
-	operationFunctions[33] = &this->IPV4_DIFFERENTIATED_SERVICES_FIELD_ECT_OPERATION_ROUTINE;
-	operationFunctions[34] = &this->IPV4_DIFFERENTIATED_SERVICES_FIELD_CE_OPERATION_ROUTINE;
-	operationFunctions[35] = &this->IPV4_TOTAL_LENGTH_OPERATION_ROUTINE;
-	operationFunctions[36] = &this->IPV4_IDENTIFICATION_OPERATION_ROUTINE;
-	operationFunctions[37] = &this->IPV4_FRAGMENT_FLAGS_OPERATION_ROUTINE;
-	operationFunctions[38] = &this->IPV4_FRAGMENT_FLAGS_DF_OPERATION_ROUTINE;
-	operationFunctions[39] = &this->IPV4_FRAGMENT_FLAGS_MF_OPERATION_ROUTINE;
-	operationFunctions[40] = &this->IPV4_FRAGMENT_FLAGS_OFFSET_OPERATION_ROUTINE;
-	operationFunctions[41] = &this->IPV4_TIME_TO_LIVE_OPERATION_ROUTINE;
-	operationFunctions[42] = &this->IPV4_NEXT_PROTOCOL_OPERATION_ROUTINE;
-	operationFunctions[43] = &this->IPV4_CHECKSUM_OPERATION_ROUTINE;
-	operationFunctions[44] = &this->IPV4_SOURCE_ADDRESS_OPERATION_ROUTINE;
-	operationFunctions[45] = &this->IPV4_DESTINATION_ADDRESS_OPERATION_ROUTINE;
+	definedTagFunctions[27] = &IPV4_TAG_FUNCTION;
+	definedTagFunctions[28] = &IPV4_VERSIONS_TAG_FUNCTION;
+	definedTagFunctions[29] = &IPV4_VERSIONS_VERSION_TAG_FUNCTION;
+	definedTagFunctions[30] = &IPV4_VERSIONS_HEADER_LENGTH_TAG_FUNCTION;
+	definedTagFunctions[31] = &IPV4_DIFFERENTIATED_SERVICES_FIELD_TAG_FUNCTION;
+	definedTagFunctions[32] = &IPV4_DIFFERENTIATED_SERVICES_FIELD_DSCP_TAG_FUNCTION;
+	definedTagFunctions[33] = &IPV4_DIFFERENTIATED_SERVICES_FIELD_ECT_TAG_FUNCTION;
+	definedTagFunctions[34] = &IPV4_DIFFERENTIATED_SERVICES_FIELD_CE_TAG_FUNCTION;
+	definedTagFunctions[35] = &IPV4_TOTAL_LENGTH_TAG_FUNCTION;
+	definedTagFunctions[36] = &IPV4_IDENTIFICATION_TAG_FUNCTION;
+	definedTagFunctions[37] = &IPV4_FRAGMENT_FLAGS_TAG_FUNCTION;
+	definedTagFunctions[38] = &IPV4_FRAGMENT_FLAGS_DF_TAG_FUNCTION;
+	definedTagFunctions[39] = &IPV4_FRAGMENT_FLAGS_MF_TAG_FUNCTION;
+	definedTagFunctions[40] = &IPV4_FRAGMENT_FLAGS_OFFSET_TAG_FUNCTION;
+	definedTagFunctions[41] = &IPV4_TIME_TO_LIVE_TAG_FUNCTION;
+	definedTagFunctions[42] = &IPV4_NEXT_PROTOCOL_TAG_FUNCTION;
+	definedTagFunctions[43] = &IPV4_CHECKSUM_TAG_FUNCTION;
+	definedTagFunctions[44] = &IPV4_SOURCE_ADDRESS_TAG_FUNCTION;
+	definedTagFunctions[45] = &IPV4_DESTINATION_ADDRESS_TAG_FUNCTION;
 
-	operationFunctions[46] = &this->IPV6_OPERATION_ROUTINE;
-	operationFunctions[47] = &this->IPV6_VERSIONS_OPERATION_ROUTINE;
-	operationFunctions[48] = &this->IPV6_VERSIONS_VERSION_OPERATION_ROUTINE;
-	operationFunctions[49] = &this->IPV6_VERSIONS_DSCP_OPERATION_ROUTINE;
-	operationFunctions[50] = &this->IPV6_VERSIONS_ECT_OPERATION_ROUTINE;
-	operationFunctions[51] = &this->IPV6_VERSIONS_CE_OPERATION_ROUTINE;
-	operationFunctions[52] = &this->IPV6_VERISONS_FLOW_LABEL_OPERATION_ROUTINE;
-	operationFunctions[53] = &this->IPV6_PAYLOAD_LENGTH_OPERATION_ROUTINE;
-	operationFunctions[54] = &this->IPV6_NEXT_PROTOCOL_OPERATION_ROUTINE;
-	operationFunctions[55] = &this->IPV6_HOP_LIMIT_OPERATION_ROUTINE;
-	operationFunctions[56] = &this->IPV6_SOURCE_ADDRESS_OPERATION_ROUTINE;
-	operationFunctions[57] = &this->IPV6_DESTINATION_ADDRESS_OPERATION_ROUTINE;
+	definedTagFunctions[46] = &IPV6_TAG_FUNCTION;
+	definedTagFunctions[47] = &IPV6_VERSIONS_TAG_FUNCTION;
+	definedTagFunctions[48] = &IPV6_VERSIONS_VERSION_TAG_FUNCTION;
+	definedTagFunctions[49] = &IPV6_VERSIONS_DSCP_TAG_FUNCTION;
+	definedTagFunctions[50] = &IPV6_VERSIONS_ECT_TAG_FUNCTION;
+	definedTagFunctions[51] = &IPV6_VERSIONS_CE_TAG_FUNCTION;
+	definedTagFunctions[52] = &IPV6_VERISONS_FLOW_LABEL_TAG_FUNCTION;
+	definedTagFunctions[53] = &IPV6_PAYLOAD_LENGTH_TAG_FUNCTION;
+	definedTagFunctions[54] = &IPV6_NEXT_PROTOCOL_TAG_FUNCTION;
+	definedTagFunctions[55] = &IPV6_HOP_LIMIT_TAG_FUNCTION;
+	definedTagFunctions[56] = &IPV6_SOURCE_ADDRESS_TAG_FUNCTION;
+	definedTagFunctions[57] = &IPV6_DESTINATION_ADDRESS_TAG_FUNCTION;
 
-	operationFunctions[58] = &this->TCP_OPERATION_ROUTINE;
-	operationFunctions[59] = &this->TCP_SOURCE_PORT_OPERATION_ROUTINE;
-	operationFunctions[60] = &this->TCP_DESTINATION_PORT_OPERATION_ROUTINE;
-	operationFunctions[61] = &this->TCP_PAYLOAD_LENGTH_OPERATION_ROUTINE;
-	operationFunctions[62] = &this->TCP_ACKNOWLEDGEMENT_NUMBER_OPERATION_ROUTINE;
-	operationFunctions[63] = &this->TCP_SEQUENCE_NUMBER_OPERATION_ROUTINE;
-	operationFunctions[64] = &this->TCP_DATA_OFFSET_OPERATION_ROUTINE;
-	operationFunctions[65] = &this->TCP_FLAGS_OPERATION_ROUTINE;
-	operationFunctions[66] = &this->TCP_FLAGS_FIN_OPERATION_ROUTINE;
-	operationFunctions[67] = &this->TCP_FLAGS_SYN_OPERATION_ROUTINE;
-	operationFunctions[68] = &this->TCP_FLAGS_RST_OPERATION_ROUTINE;
-	operationFunctions[69] = &this->TCP_FLAGS_PSH_OPERATION_ROUTINE;
-	operationFunctions[70] = &this->TCP_FLAGS_ACK_OPERATION_ROUTINE;
-	operationFunctions[71] = &this->TCP_FLAGS_URG_OPERATION_ROUTINE;
-	operationFunctions[72] = &this->TCP_FLAGS_ECE_OPERATION_ROUTINE;
-	operationFunctions[73] = &this->TCP_FLAGS_CWR_OPERATION_ROUTINE;
-	operationFunctions[74] = &this->TCP_WINDOW_OPERATION_ROUTINE;
-	operationFunctions[75] = &this->TCP_CHECKSUM_OPERATION_ROUTINE;
-	operationFunctions[76] = &this->TCP_URGENT_POINTER_OPERATION_ROUTINE;
+	definedTagFunctions[58] = &TCP_TAG_FUNCTION;
+	definedTagFunctions[59] = &TCP_SOURCE_PORT_TAG_FUNCTION;
+	definedTagFunctions[60] = &TCP_DESTINATION_PORT_TAG_FUNCTION;
+	definedTagFunctions[61] = &TCP_PAYLOAD_LENGTH_TAG_FUNCTION;
+	definedTagFunctions[62] = &TCP_ACKNOWLEDGEMENT_NUMBER_TAG_FUNCTION;
+	definedTagFunctions[63] = &TCP_SEQUENCE_NUMBER_TAG_FUNCTION;
+	definedTagFunctions[64] = &TCP_DATA_OFFSET_TAG_FUNCTION;
+	definedTagFunctions[65] = &TCP_FLAGS_TAG_FUNCTION;
+	definedTagFunctions[66] = &TCP_FLAGS_FIN_TAG_FUNCTION;
+	definedTagFunctions[67] = &TCP_FLAGS_SYN_TAG_FUNCTION;
+	definedTagFunctions[68] = &TCP_FLAGS_RST_TAG_FUNCTION;
+	definedTagFunctions[69] = &TCP_FLAGS_PSH_TAG_FUNCTION;
+	definedTagFunctions[70] = &TCP_FLAGS_ACK_TAG_FUNCTION;
+	definedTagFunctions[71] = &TCP_FLAGS_URG_TAG_FUNCTION;
+	definedTagFunctions[72] = &TCP_FLAGS_ECE_TAG_FUNCTION;
+	definedTagFunctions[73] = &TCP_FLAGS_CWR_TAG_FUNCTION;
+	definedTagFunctions[74] = &TCP_WINDOW_TAG_FUNCTION;
+	definedTagFunctions[75] = &TCP_CHECKSUM_TAG_FUNCTION;
+	definedTagFunctions[76] = &TCP_URGENT_POINTER_TAG_FUNCTION;
 
-	operationFunctions[77] = &this->UDP_OPERATION_ROUTINE;
-	operationFunctions[78] = &this->UDP_SOURCE_PORT_OPERATION_ROUTINE;
-	operationFunctions[79] = &this->UDP_DESTINATION_PORT_OPERATION_ROUTINE;
-	operationFunctions[80] = &this->UDP_LENGTH_OPERATION_ROUTINE;
-	operationFunctions[81] = &this->UDP_CHECKSUM_OPERATION_ROUTINE;
-	operationFunctions[82] = &this->CONTENT_OPERATION_ROUTINE;
+	definedTagFunctions[77] = &UDP_TAG_FUNCTION;
+	definedTagFunctions[78] = &UDP_SOURCE_PORT_TAG_FUNCTION;
+	definedTagFunctions[79] = &UDP_DESTINATION_PORT_TAG_FUNCTION;
+	definedTagFunctions[80] = &UDP_LENGTH_TAG_FUNCTION;
+	definedTagFunctions[81] = &UDP_CHECKSUM_TAG_FUNCTION;
+	definedTagFunctions[82] = &CONTENT_TAG_FUNCTION;
 
-	this->operationProcessor = new OperationProcessor((void *)this, NUMBER_OF_OPERATIONS, operations, operationFunctions);
+	formatStringProcessor = new FormatStringProcessor((void *)this, NUMBER_OF_TAGS, definedTags, definedTagFunctions);
 }
 NetworkPacketAnalyzer::~NetworkPacketAnalyzer()
 {
-	pcap_close(this->adapterHandle);
+	delete formatStringProcessor;
+
+	free(definedTagFunctions);
+	free(definedTags);
+
+	pcap_close(adapterHandle);
 }
 
 void NetworkPacketAnalyzer::Run(int numberOfPackets, char * formatString, char * filterString)
 {
 	for (int i = 0; (numberOfPackets) ? i < numberOfPackets : true; i++)
 	{
-		this->packet = NULL;
-		pcap_next_ex(this->adapterHandle, &this->header, (const u_char **)&this->packet);
+		packet = NULL;
+		pcap_next_ex(adapterHandle, &header, (const u_char **)&packet);
 
-		if (this->packet)
+		if (packet)
 		{
 			time_t rawtime;
 
 			time(&rawtime);
-			this->timeInfo = localtime(&rawtime);
+			timeInfo = localtime(&rawtime);
 
-			this->bETH = false; this->ethernet.Clear();
-			this->bARP = false; this->arp.Clear();
-			this->bIPv4 = false; this->ipv4.Clear();
-			this->bIPv6 = false; this->ipv6.Clear();
-			this->bTCP = false; this->tcp.Clear();
-			this->bUDP = false; this->udp.Clear();
+			bETH = false; ethernet.Clear();
+			bARP = false; arp.Clear();
+			bIPv4 = false; ipv4.Clear();
+			bIPv6 = false; ipv6.Clear();
+			bTCP = false; tcp.Clear();
+			bUDP = false; udp.Clear();
 
-			this->startingPoint = 0;
+			startingPoint = 0;
 
-			this->ethernet.Assign((void *)this->packet);
-			this->bETH = true;
-			this->startingPoint += sizeof(EthernetHeader);
+			ethernet.Assign((void *)packet);
+			bETH = true;
+			startingPoint += ETHERNET_HEADER_SIZE;
 
-			switch (this->ethernet.Type)
+			switch (ethernet.Type)
 			{
 			case ETHERNET_ARP:
-				this->arp.Assign((void *)(this->packet + this->startingPoint));
-				this->bARP = true;
-				this->startingPoint += sizeof(ARPHeader);
+				arp.Assign((void *)(packet + startingPoint));
+				bARP = true;
+				startingPoint += ARP_HEADER_SIZE;
 				break;
 			case ETHERNET_IPV4:
-				this->ipv4.Assign((void *)(this->packet + this->startingPoint));
-				this->bIPv4 = true;
-				this->startingPoint += sizeof(IPV4Header);
-				switch (this->ipv4.NextProtocol)
+				ipv4.Assign((void *)(packet + startingPoint));
+				bIPv4 = true;
+				startingPoint += IPV4_HEADER_SIZE;
+				switch (ipv4.NextProtocol)
 				{
 				case IPV4_TCP:
-					this->tcp.Assign((void *)(this->packet + this->startingPoint));
-					this->bTCP = true;
-					this->startingPoint += sizeof(TCPHeader);
+					tcp.Assign((void *)(packet + startingPoint));
+					bTCP = true;
+					startingPoint += TCP_HEADER_SIZE;
 					break;
 				case IPV4_UDP:
-					this->udp.Assign((void *)(this->packet + this->startingPoint));
-					this->bUDP = true;
-					this->startingPoint += sizeof(UDPHeader);
+					udp.Assign((void *)(packet + startingPoint));
+					bUDP = true;
+					startingPoint += UDP_HEADER_SIZE;
 					break;
 				}
 				break;
 			case ETHERNET_IPV6:
-				this->ipv6.Assign((void *)(this->packet + this->startingPoint));
-				this->bIPv6 = true;
-				this->startingPoint += sizeof(IPV6Header);
-				switch (this->ipv6.NextProtocol)
+				ipv6.Assign((void *)(packet + startingPoint));
+				bIPv6 = true;
+				startingPoint += IPV6_HEADER_SIZE;
+				switch (ipv6.NextProtocol)
 				{
 				case IPV6_TCP:
-					this->tcp.Assign((void *)(this->packet + this->startingPoint));
-					this->bTCP = true;
-					this->startingPoint += sizeof(TCPHeader);
+					tcp.Assign((void *)(packet + startingPoint));
+					bTCP = true;
+					startingPoint += TCP_HEADER_SIZE;
 					break;
 				case IPV6_UDP:
-					this->udp.Assign((void *)(this->packet + this->startingPoint));
-					this->bUDP = true;
-					this->startingPoint += sizeof(UDPHeader);
+					udp.Assign((void *)(packet + startingPoint));
+					bUDP = true;
+					startingPoint += UDP_HEADER_SIZE;
 					break;
 				}
 				break;
 			}
-			char * filter = this->operationProcessor->Resolve(filterString);
+			char * filter = formatStringProcessor->Resolve(filterString);
 			if (filter[0] == '1')
 			{
-				char * outputString = this->operationProcessor->Resolve(formatString);
+				char * outputString = formatStringProcessor->Resolve(formatString);
 				printf("%s", outputString);
 				free(outputString);
 			}
@@ -431,942 +444,837 @@ void NetworkPacketAnalyzer::Run(int numberOfPackets, char * formatString, char *
 	}
 }
 
-void NetworkPacketAnalyzer::GENERAL_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::GENERAL_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = -1;
-	while (operationNode->Operation[++length] != '\0');
+	while (formatTag->Specifier[++length] != '\0');
 
-	operationNode->Output = (char *)malloc(length + 1);
+	formatTag->Output = (char *)malloc(length + 1);
 
 	for (int i = 0; i <= length; i++)
-		operationNode->Output[i] = operationNode->Operation[i];
+		formatTag->Output[i] = formatTag->Specifier[i];
 }
 
-void NetworkPacketAnalyzer::IF_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IF_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	if (operationNode->Parameters[0][0] == '0')
+	if (formatTag->Parameters[0][0] == '0')
 	{
-		operationNode->Output = (char *)malloc(1 * sizeof(char));
-		operationNode->Output[0] = '\0';
-		operationNode->NextOperation->Free();
-		free(operationNode->NextOperation);
-		operationNode->NextOperation = NULL;
+		formatTag->Output = (char *)malloc(1 * sizeof(char));
+		formatTag->Output[0] = '\0';
+		formatTag->NextFormatTag->Free();
+		free(formatTag->NextFormatTag);
+		formatTag->NextFormatTag = NULL;
 	}
 }
-void NetworkPacketAnalyzer::EQUALS_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::EQUALS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	operationNode->Output = (char *)malloc(2 * sizeof(char));
+	formatTag->Output = (char *)malloc(2 * sizeof(char));
 
-	for (int i = 1; i < operationNode->NumberOfParameters; i++)
-		if (strcmp(operationNode->Parameters[i], operationNode->Parameters[0]))
+	for (int i = 1; i < formatTag->NumberOfParameters; i++)
+		if (strcmp(formatTag->Parameters[i], formatTag->Parameters[0]))
 		{
-			operationNode->Output[0] = '0';
-			operationNode->Output[1] = '\0';
+			formatTag->Output[0] = '0';
+			formatTag->Output[1] = '\0';
 			return;
 		}
-	operationNode->Output[0] = '1';
-	operationNode->Output[1] = '\0';
+	formatTag->Output[0] = '1';
+	formatTag->Output[1] = '\0';
 }
-void NetworkPacketAnalyzer::NOT_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::NOT_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	operationNode->Output = (char *)malloc(2 * sizeof(char));
+	formatTag->Output = (char *)malloc(2 * sizeof(char));
 
-	if (operationNode->Parameters[0][0] == '1')
-		operationNode->Output[0] = '0';
+	if (formatTag->Parameters[0][0] == '1')
+		formatTag->Output[0] = '0';
 	else
-		operationNode->Output[0] = '1';
-	operationNode->Output[1] = '\0';
+		formatTag->Output[0] = '1';
+	formatTag->Output[1] = '\0';
 }
-void NetworkPacketAnalyzer::OR_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::OR_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	operationNode->Output = (char *)malloc(2 * sizeof(char));
+	formatTag->Output = (char *)malloc(2 * sizeof(char));
 
-	for (int i = 0; i < operationNode->NumberOfParameters; i++)
-		if (operationNode->Parameters[i][0] == '1')
+	for (int i = 0; i < formatTag->NumberOfParameters; i++)
+		if (formatTag->Parameters[i][0] == '1')
 		{
-			operationNode->Output[0] = '1';
-			operationNode->Output[1] = '\0';
+			formatTag->Output[0] = '1';
+			formatTag->Output[1] = '\0';
 			return;
 		}
-	operationNode->Output[0] = '0';
-	operationNode->Output[1] = '\0';
+	formatTag->Output[0] = '0';
+	formatTag->Output[1] = '\0';
 }
-void NetworkPacketAnalyzer::AND_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::AND_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	operationNode->Output = (char *)malloc(2 * sizeof(char));
+	formatTag->Output = (char *)malloc(2 * sizeof(char));
 
-	for (int i = 0; i < operationNode->NumberOfParameters; i++)
-		if (operationNode->Parameters[i][0] == '0')
+	for (int i = 0; i < formatTag->NumberOfParameters; i++)
+		if (formatTag->Parameters[i][0] == '0')
 		{
-			operationNode->Output[0] = '0';
-			operationNode->Output[1] = '\0';
+			formatTag->Output[0] = '0';
+			formatTag->Output[1] = '\0';
 			return;
 		}
-	operationNode->Output[0] = '1';
-	operationNode->Output[1] = '\0';
+	formatTag->Output[0] = '1';
+	formatTag->Output[1] = '\0';
 }
-void NetworkPacketAnalyzer::ODD_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::ODD_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	operationNode->Output = (char *)malloc(2 * sizeof(char));
+	formatTag->Output = (char *)malloc(2 * sizeof(char));
 
 	int count = 0;
-	for (int i = 0; i < operationNode->NumberOfParameters; i++)
-		if (operationNode->Parameters[i]) count++;
+	for (int i = 0; i < formatTag->NumberOfParameters; i++)
+		if (formatTag->Parameters[i]) count++;
 
 	if (count % 2)
-		operationNode->Output[0] = '1';
+		formatTag->Output[0] = '1';
 	else
-		operationNode->Output[0] = '0';
-	operationNode->Output[1] = '\0';
+		formatTag->Output[0] = '0';
+	formatTag->Output[1] = '\0';
 }
-void NetworkPacketAnalyzer::XOR_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::XOR_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	operationNode->Output = (char *)malloc(2 * sizeof(char));
+	formatTag->Output = (char *)malloc(2 * sizeof(char));
 
 	int count = 0;
-	for (int i = 0; i < operationNode->NumberOfParameters; i++)
-		if (operationNode->Parameters[i]) count++;
+	for (int i = 0; i < formatTag->NumberOfParameters; i++)
+		if (formatTag->Parameters[i]) count++;
 
 	if (count == 1)
-		operationNode->Output[0] = '1';
+		formatTag->Output[0] = '1';
 	else
-		operationNode->Output[0] = '0';
-	operationNode->Output[1] = '\0';
+		formatTag->Output[0] = '0';
+	formatTag->Output[1] = '\0';
 }
 
-void NetworkPacketAnalyzer::LEADING_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::LEADING_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	unsigned int spaces = StringToInteger(operationNode->Parameters[1]);
-	operationNode->Output = (char *)malloc(spaces + 1);
+	unsigned int spaces = StringToInteger(formatTag->Parameters[1]);
+	formatTag->Output = (char *)malloc(spaces + 1);
 
 	int length = -1;
-	while (input[++length] != '\0');
+	while (tagFunctionInput[++length] != '\0');
 
 	unsigned int i = 0;
 	for (i; i < spaces - length; i++)
-		operationNode->Output[i] = operationNode->Parameters[0][0];
+		formatTag->Output[i] = formatTag->Parameters[0][0];
 	for (i; i < spaces; i++)
-		operationNode->Output[i] = input[i - (spaces - length)];
+		formatTag->Output[i] = tagFunctionInput[i - (spaces - length)];
 
-	operationNode->Output[i] = '\0';
+	formatTag->Output[i] = '\0';
 }
-void NetworkPacketAnalyzer::TRAILING_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::TRAILING_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	unsigned int spaces = StringToInteger(operationNode->Parameters[1]);
-	operationNode->Output = (char *)malloc(spaces + 1);
+	unsigned int spaces = StringToInteger(formatTag->Parameters[1]);
+	formatTag->Output = (char *)malloc(spaces + 1);
 
 	int length = -1;
-	while (input[++length] != '\0');
+	while (tagFunctionInput[++length] != '\0');
 
 	int i = 0;
 	for (i; i < length; i++)
-		operationNode->Output[i] = input[i];
+		formatTag->Output[i] = tagFunctionInput[i];
 	for (i; i < (int)spaces; i++)
-		operationNode->Output[i] = operationNode->Parameters[0][0];
+		formatTag->Output[i] = formatTag->Parameters[0][0];
 
-	operationNode->Output[i] = '\0';
+	formatTag->Output[i] = '\0';
 }
 
-void NetworkPacketAnalyzer::HOUR_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::HOUR_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->timeInfo->tm_hour);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->timeInfo->tm_hour);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->timeInfo->tm_hour);
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->timeInfo->tm_hour);
 }
-void NetworkPacketAnalyzer::MINUTE_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::MINUTE_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->timeInfo->tm_min);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->timeInfo->tm_min);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->timeInfo->tm_min);
-
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->timeInfo->tm_min);
 }
-void NetworkPacketAnalyzer::SECOND_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::SECOND_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->timeInfo->tm_sec);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->timeInfo->tm_sec);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->timeInfo->tm_sec);
-
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->timeInfo->tm_sec);
 }
 
-void NetworkPacketAnalyzer::ETHERNET_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::ETHERNET_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	if (((NetworkPacketAnalyzer*)_this)->bETH)
-	{
-		operationNode->Output = (char *)malloc(109);
-
-		sprintf(operationNode->Output, "|-Ethernet:\n| |-DestinationAddress: %02x-%02x-%02x-%02x-%02x-%02x\n| |-SourceAddress: %02x-%02x-%02x-%02x-%02x-%02x\n| `-Type: 0x%04x\n", ((NetworkPacketAnalyzer*)_this)->ethernet.DestinationAddress[0], ((NetworkPacketAnalyzer*)_this)->ethernet.DestinationAddress[1], ((NetworkPacketAnalyzer*)_this)->ethernet.DestinationAddress[2], ((NetworkPacketAnalyzer*)_this)->ethernet.DestinationAddress[3], ((NetworkPacketAnalyzer*)_this)->ethernet.DestinationAddress[4], ((NetworkPacketAnalyzer*)_this)->ethernet.DestinationAddress[5], ((NetworkPacketAnalyzer*)_this)->ethernet.SourceAddress[0], ((NetworkPacketAnalyzer*)_this)->ethernet.SourceAddress[1], ((NetworkPacketAnalyzer*)_this)->ethernet.SourceAddress[2], ((NetworkPacketAnalyzer*)_this)->ethernet.SourceAddress[3], ((NetworkPacketAnalyzer*)_this)->ethernet.SourceAddress[4], ((NetworkPacketAnalyzer*)_this)->ethernet.SourceAddress[5], ((NetworkPacketAnalyzer*)_this)->ethernet.Type);
-	}
+	if (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->bETH)
+		formatTag->Output = ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ethernet.ToString();
 	else
 	{
-		operationNode->Output = (char *)malloc(2);
-		operationNode->Output[0] = '0';
-		operationNode->Output[1] = '\0';
+		formatTag->Output = (char *)malloc(2);
+		formatTag->Output[0] = '0';
+		formatTag->Output[1] = '\0';
 	}
 }
-void NetworkPacketAnalyzer::ETHERNET_DESTINATION_ADDRESS_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::ETHERNET_DESTINATION_ADDRESS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	operationNode->Output = (char *)malloc(18);
+	formatTag->Output = (char *)malloc(18);
 
-	sprintf(operationNode->Output, "%02x-%02x-%02x-%02x-%02x-%02x", ((NetworkPacketAnalyzer*)_this)->ethernet.DestinationAddress[0], ((NetworkPacketAnalyzer*)_this)->ethernet.DestinationAddress[1], ((NetworkPacketAnalyzer*)_this)->ethernet.DestinationAddress[2], ((NetworkPacketAnalyzer*)_this)->ethernet.DestinationAddress[3], ((NetworkPacketAnalyzer*)_this)->ethernet.DestinationAddress[4], ((NetworkPacketAnalyzer*)_this)->ethernet.DestinationAddress[5]);
+	sprintf(formatTag->Output, "%02x-%02x-%02x-%02x-%02x-%02x", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ethernet.DestinationAddress[0], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ethernet.DestinationAddress[1], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ethernet.DestinationAddress[2], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ethernet.DestinationAddress[3], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ethernet.DestinationAddress[4], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ethernet.DestinationAddress[5]);
 }
-void NetworkPacketAnalyzer::ETHERNET_SOURCE_ADDRESS_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::ETHERNET_SOURCE_ADDRESS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	operationNode->Output = (char *)malloc(18);
+	formatTag->Output = (char *)malloc(18);
 
-	sprintf(operationNode->Output, "%02x-%02x-%02x-%02x-%02x-%02x", ((NetworkPacketAnalyzer*)_this)->ethernet.SourceAddress[0], ((NetworkPacketAnalyzer*)_this)->ethernet.SourceAddress[1], ((NetworkPacketAnalyzer*)_this)->ethernet.SourceAddress[2], ((NetworkPacketAnalyzer*)_this)->ethernet.SourceAddress[3], ((NetworkPacketAnalyzer*)_this)->ethernet.SourceAddress[4], ((NetworkPacketAnalyzer*)_this)->ethernet.SourceAddress[5]);
+	sprintf(formatTag->Output, "%02x-%02x-%02x-%02x-%02x-%02x", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ethernet.SourceAddress[0], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ethernet.SourceAddress[1], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ethernet.SourceAddress[2], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ethernet.SourceAddress[3], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ethernet.SourceAddress[4], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ethernet.SourceAddress[5]);
 }
-void NetworkPacketAnalyzer::ETHERNET_TYPE_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::ETHERNET_TYPE_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->ethernet.Type);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ethernet.Type);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->ethernet.Type);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ethernet.Type);
 }
 
-void NetworkPacketAnalyzer::ARP_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::ARP_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	if (((NetworkPacketAnalyzer*)_this)->bARP)
-	{
-		operationNode->Output = (char *)malloc(297);
-
-		sprintf(operationNode->Output, "|-ARP:\n| |-HardwareType: 0x%04x\n| |-ProtocolType: 0x%04x\n| |-HardwareAddressLength: 0x%02x\n| |-ProtocolAddressLength: 0x%02x\n| |-Opcode: 0x%04x\n| |-SenderMACAddress: %02x-%02x-%02x-%02x-%02x-%02x\n| |-SenderIPv4Addres: %03d.%03d.%03d.%03d\n| |-TargetMACAddress: %02x-%02x-%02x-%02x-%02x-%02x\n| `-TargetIPv4Addres: %03d.%03d.%03d.%03d\n", ((NetworkPacketAnalyzer*)_this)->arp.HardwareType, ((NetworkPacketAnalyzer*)_this)->arp.ProtocolType, ((NetworkPacketAnalyzer*)_this)->arp.HardwareAddressLen, ((NetworkPacketAnalyzer*)_this)->arp.ProtocolAddressLen, ((NetworkPacketAnalyzer*)_this)->arp.OpCode, ((NetworkPacketAnalyzer*)_this)->arp.SenderMACAddress[0], ((NetworkPacketAnalyzer*)_this)->arp.SenderMACAddress[1], ((NetworkPacketAnalyzer*)_this)->arp.SenderMACAddress[2], ((NetworkPacketAnalyzer*)_this)->arp.SenderMACAddress[3], ((NetworkPacketAnalyzer*)_this)->arp.SenderMACAddress[4], ((NetworkPacketAnalyzer*)_this)->arp.SenderMACAddress[5], ((NetworkPacketAnalyzer*)_this)->arp.SenderIPv4Address[0], ((NetworkPacketAnalyzer*)_this)->arp.SenderIPv4Address[1], ((NetworkPacketAnalyzer*)_this)->arp.SenderIPv4Address[2], ((NetworkPacketAnalyzer*)_this)->arp.SenderIPv4Address[3], ((NetworkPacketAnalyzer*)_this)->arp.TargetMACAddress[0], ((NetworkPacketAnalyzer*)_this)->arp.TargetMACAddress[1], ((NetworkPacketAnalyzer*)_this)->arp.TargetMACAddress[2], ((NetworkPacketAnalyzer*)_this)->arp.TargetMACAddress[3], ((NetworkPacketAnalyzer*)_this)->arp.TargetMACAddress[4], ((NetworkPacketAnalyzer*)_this)->arp.TargetMACAddress[5], ((NetworkPacketAnalyzer*)_this)->arp.TargetIPv4Address[0], ((NetworkPacketAnalyzer*)_this)->arp.TargetIPv4Address[1], ((NetworkPacketAnalyzer*)_this)->arp.TargetIPv4Address[2], ((NetworkPacketAnalyzer*)_this)->arp.TargetIPv4Address[3]);
-	}
+	if (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->bARP)
+		formatTag->Output = ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.ToString();
 	else
 	{
-		operationNode->Output = (char *)malloc(2);
-		operationNode->Output[0] = '0';
-		operationNode->Output[1] = '\0';
+		formatTag->Output = (char *)malloc(2);
+		formatTag->Output[0] = '0';
+		formatTag->Output[1] = '\0';
 	}
-
 }
-void NetworkPacketAnalyzer::ARP_HARDWARE_TYPE_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::ARP_HARDWARE_TYPE_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->arp.HardwareType);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.HardwareType);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->arp.HardwareType);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.HardwareType);
 }
-void NetworkPacketAnalyzer::ARP_PROTOCOL_TYPE_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::ARP_PROTOCOL_TYPE_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->arp.ProtocolType);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.ProtocolType);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->arp.ProtocolType);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.ProtocolType);
 }
-void NetworkPacketAnalyzer::ARP_HARDWARE_ADDRESS_LENGTH_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::ARP_HARDWARE_ADDRESS_LENGTH_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->arp.HardwareAddressLen);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.HardwareAddressLen);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->arp.HardwareAddressLen);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.HardwareAddressLen);
 }
-void NetworkPacketAnalyzer::ARP_PROTOCOL_ADDRESS_LENGTH_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::ARP_PROTOCOL_ADDRESS_LENGTH_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->arp.ProtocolAddressLen);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.ProtocolAddressLen);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->arp.ProtocolAddressLen);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.ProtocolAddressLen);
 }
-void NetworkPacketAnalyzer::ARP_OPERATION_CODE_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::ARP_OPERATION_CODE_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->arp.OpCode);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.OpCode);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->arp.OpCode);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.OpCode);
 }
-void NetworkPacketAnalyzer::ARP_SENDER_MAC_ADDRESS_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::ARP_SENDER_MAC_ADDRESS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	operationNode->Output = (char *)malloc(18);
+	formatTag->Output = (char *)malloc(18);
 
-	sprintf(operationNode->Output, "%02x-%02x-%02x-%02x-%02x-%02x", ((NetworkPacketAnalyzer*)_this)->arp.SenderMACAddress[0], ((NetworkPacketAnalyzer*)_this)->arp.SenderMACAddress[1], ((NetworkPacketAnalyzer*)_this)->arp.SenderMACAddress[2], ((NetworkPacketAnalyzer*)_this)->arp.SenderMACAddress[3], ((NetworkPacketAnalyzer*)_this)->arp.SenderMACAddress[4], ((NetworkPacketAnalyzer*)_this)->arp.SenderMACAddress[5]);
-
+	sprintf(formatTag->Output, "%02x-%02x-%02x-%02x-%02x-%02x", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.SenderMACAddress[0], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.SenderMACAddress[1], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.SenderMACAddress[2], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.SenderMACAddress[3], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.SenderMACAddress[4], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.SenderMACAddress[5]);
 }
-void NetworkPacketAnalyzer::ARP_SENDER_IPV4_ADDRESS_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::ARP_SENDER_IPV4_ADDRESS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	operationNode->Output = (char *)malloc(16);
+	formatTag->Output = (char *)malloc(16);
 
-	sprintf(operationNode->Output, "%03d.%03d.%03d.%03d", ((NetworkPacketAnalyzer*)_this)->arp.SenderIPv4Address[0], ((NetworkPacketAnalyzer*)_this)->arp.SenderIPv4Address[1], ((NetworkPacketAnalyzer*)_this)->arp.SenderIPv4Address[2], ((NetworkPacketAnalyzer*)_this)->arp.SenderIPv4Address[3]);
-
+	sprintf(formatTag->Output, "%03d.%03d.%03d.%03d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.SenderIPv4Address[0], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.SenderIPv4Address[1], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.SenderIPv4Address[2], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.SenderIPv4Address[3]);
 }
-void NetworkPacketAnalyzer::ARP_TARGET_MAC_ADDRESS_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::ARP_TARGET_MAC_ADDRESS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	operationNode->Output = (char *)malloc(18);
+	formatTag->Output = (char *)malloc(18);
 
-	sprintf(operationNode->Output, "%02x-%02x-%02x-%02x-%02x-%02x", ((NetworkPacketAnalyzer*)_this)->arp.TargetMACAddress[0], ((NetworkPacketAnalyzer*)_this)->arp.TargetMACAddress[1], ((NetworkPacketAnalyzer*)_this)->arp.TargetMACAddress[2], ((NetworkPacketAnalyzer*)_this)->arp.TargetMACAddress[3], ((NetworkPacketAnalyzer*)_this)->arp.TargetMACAddress[4], ((NetworkPacketAnalyzer*)_this)->arp.TargetMACAddress[5]);
-
+	sprintf(formatTag->Output, "%02x-%02x-%02x-%02x-%02x-%02x", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.TargetMACAddress[0], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.TargetMACAddress[1], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.TargetMACAddress[2], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.TargetMACAddress[3], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.TargetMACAddress[4], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.TargetMACAddress[5]);
 }
-void NetworkPacketAnalyzer::ARP_TARGET_IPV4_ADDRESS_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::ARP_TARGET_IPV4_ADDRESS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	operationNode->Output = (char *)malloc(16);
+	formatTag->Output = (char *)malloc(16);
 
-	sprintf(operationNode->Output, "%03d.%03d.%03d.%03d", ((NetworkPacketAnalyzer*)_this)->arp.TargetIPv4Address[0], ((NetworkPacketAnalyzer*)_this)->arp.TargetIPv4Address[1], ((NetworkPacketAnalyzer*)_this)->arp.TargetIPv4Address[2], ((NetworkPacketAnalyzer*)_this)->arp.TargetIPv4Address[3]);
-
+	sprintf(formatTag->Output, "%03d.%03d.%03d.%03d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.TargetIPv4Address[0], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.TargetIPv4Address[1], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.TargetIPv4Address[2], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->arp.TargetIPv4Address[3]);
 }
 
-void NetworkPacketAnalyzer::IPV4_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV4_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	if (((NetworkPacketAnalyzer*)_this)->bIPv4)
-	{
-		operationNode->Output = (char *)malloc(421);
-
-		sprintf(operationNode->Output, "|-IPv4:\n| |-Versions: 0x%02x\n| | |-Version: 0x%01x\n| | `-HeaderLength: 0x%01x\n| |-DifferentiatedServicesField: 0x%02x\n| | |-DSCP: 0x%02x\n| | |-ECT: 0x%01x\n| | `-CE: 0x%01x\n| |-TotalLength: 0x%04x\n| |-Identification: 0x%04x\n| |-FragmentFlags: 0x%04x\n| | |-DF: 0x%01x\n| | |-MF: 0x%01x\n| | `-Offset: 0x%04x\n| |-TimeToLive: 0x%02x\n| |-NextProtocol: 0x%02x\n| |-Checksum: 0x%04x\n| |-SourceAddress: %03d.%03d.%03d.%03d\n| `-DestinationAddress: %03d.%03d.%03d.%03d\n", ((NetworkPacketAnalyzer*)_this)->ipv4.Versions, (((NetworkPacketAnalyzer*)_this)->ipv4.Versions >> 4) & 0xF, ((NetworkPacketAnalyzer*)_this)->ipv4.Versions & 0xF, ((NetworkPacketAnalyzer*)_this)->ipv4.DifferentiatedServicesField, (((NetworkPacketAnalyzer*)_this)->ipv4.DifferentiatedServicesField >> 2) & 0x3F, (((NetworkPacketAnalyzer*)_this)->ipv4.DifferentiatedServicesField >> 1) & 0x1, ((NetworkPacketAnalyzer*)_this)->ipv4.DifferentiatedServicesField & 0x1, ((NetworkPacketAnalyzer*)_this)->ipv4.TotalLength, ((NetworkPacketAnalyzer*)_this)->ipv4.Identification, ((NetworkPacketAnalyzer*)_this)->ipv4.FragmentFlags, (((NetworkPacketAnalyzer*)_this)->ipv4.FragmentFlags >> 14) & 0x1, (((NetworkPacketAnalyzer*)_this)->ipv4.FragmentFlags >> 13) & 0x1, ((NetworkPacketAnalyzer*)_this)->ipv4.FragmentFlags & 0x1FFF, ((NetworkPacketAnalyzer*)_this)->ipv4.TimeToLive, ((NetworkPacketAnalyzer*)_this)->ipv4.NextProtocol, ((NetworkPacketAnalyzer*)_this)->ipv4.Checksum, ((NetworkPacketAnalyzer*)_this)->ipv4.SourceAddress[0], ((NetworkPacketAnalyzer*)_this)->ipv4.SourceAddress[1], ((NetworkPacketAnalyzer*)_this)->ipv4.SourceAddress[2], ((NetworkPacketAnalyzer*)_this)->ipv4.SourceAddress[3], ((NetworkPacketAnalyzer*)_this)->ipv4.DestinationAddress[0], ((NetworkPacketAnalyzer*)_this)->ipv4.DestinationAddress[1], ((NetworkPacketAnalyzer*)_this)->ipv4.DestinationAddress[2], ((NetworkPacketAnalyzer*)_this)->ipv4.DestinationAddress[3]);
-	}
+	if (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->bIPv4)
+		formatTag->Output = ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.ToString();
 	else
 	{
-		operationNode->Output = (char *)malloc(2);
-		operationNode->Output[0] = '0';
-		operationNode->Output[1] = '\0';
+		formatTag->Output = (char *)malloc(2);
+		formatTag->Output[0] = '0';
+		formatTag->Output[1] = '\0';
 	}
 }
-void NetworkPacketAnalyzer::IPV4_VERSIONS_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV4_VERSIONS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->ipv4.Versions);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.Versions);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->ipv4.Versions);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.Versions);
 }
-void NetworkPacketAnalyzer::IPV4_VERSIONS_VERSION_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV4_VERSIONS_VERSION_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength((((NetworkPacketAnalyzer*)_this)->ipv4.Versions >> 4) & 0XF);
+	length += IntegerLength((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.Versions >> 4) & 0XF);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", (((NetworkPacketAnalyzer*)_this)->ipv4.Versions >> 4) & 0xF);
-
+	sprintf(formatTag->Output, "%d", (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.Versions >> 4) & 0xF);
 }
-void NetworkPacketAnalyzer::IPV4_VERSIONS_HEADER_LENGTH_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV4_VERSIONS_HEADER_LENGTH_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->ipv4.Versions & 0xF);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.Versions & 0xF);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->ipv4.Versions & 0xF);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.Versions & 0xF);
 }
-void NetworkPacketAnalyzer::IPV4_DIFFERENTIATED_SERVICES_FIELD_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV4_DIFFERENTIATED_SERVICES_FIELD_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->ipv4.DifferentiatedServicesField);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.DifferentiatedServicesField);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->ipv4.DifferentiatedServicesField);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.DifferentiatedServicesField);
 }
-void NetworkPacketAnalyzer::IPV4_DIFFERENTIATED_SERVICES_FIELD_DSCP_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV4_DIFFERENTIATED_SERVICES_FIELD_DSCP_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength((((NetworkPacketAnalyzer*)_this)->ipv4.DifferentiatedServicesField >> 2) & 0x3F);
+	length += IntegerLength((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.DifferentiatedServicesField >> 2) & 0x3F);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", (((NetworkPacketAnalyzer*)_this)->ipv4.DifferentiatedServicesField >> 2) & 0x3F);
-
+	sprintf(formatTag->Output, "%d", (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.DifferentiatedServicesField >> 2) & 0x3F);
 }
-void NetworkPacketAnalyzer::IPV4_DIFFERENTIATED_SERVICES_FIELD_ECT_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV4_DIFFERENTIATED_SERVICES_FIELD_ECT_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength((((NetworkPacketAnalyzer*)_this)->ipv4.DifferentiatedServicesField >> 1) & 0x1);
+	length += IntegerLength((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.DifferentiatedServicesField >> 1) & 0x1);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", (((NetworkPacketAnalyzer*)_this)->ipv4.DifferentiatedServicesField >> 1) & 0x1);
-
+	sprintf(formatTag->Output, "%d", (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.DifferentiatedServicesField >> 1) & 0x1);
 }
-void NetworkPacketAnalyzer::IPV4_DIFFERENTIATED_SERVICES_FIELD_CE_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV4_DIFFERENTIATED_SERVICES_FIELD_CE_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->ipv4.DifferentiatedServicesField & 0x1);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.DifferentiatedServicesField & 0x1);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->ipv4.DifferentiatedServicesField & 0x1);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.DifferentiatedServicesField & 0x1);
 }
-void NetworkPacketAnalyzer::IPV4_TOTAL_LENGTH_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV4_TOTAL_LENGTH_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->ipv4.TotalLength);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.TotalLength);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->ipv4.TotalLength);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.TotalLength);
 }
-void NetworkPacketAnalyzer::IPV4_IDENTIFICATION_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV4_IDENTIFICATION_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->ipv4.Identification);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.Identification);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->ipv4.Identification);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.Identification);
 }
-void NetworkPacketAnalyzer::IPV4_FRAGMENT_FLAGS_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV4_FRAGMENT_FLAGS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->ipv4.FragmentFlags);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.FragmentFlags);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->ipv4.FragmentFlags);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.FragmentFlags);
 }
-void NetworkPacketAnalyzer::IPV4_FRAGMENT_FLAGS_DF_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV4_FRAGMENT_FLAGS_DF_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength((((NetworkPacketAnalyzer*)_this)->ipv4.FragmentFlags >> 14) & 0x1);
+	length += IntegerLength((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.FragmentFlags >> 14) & 0x1);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", (((NetworkPacketAnalyzer*)_this)->ipv4.FragmentFlags >> 14) & 0x1);
-
+	sprintf(formatTag->Output, "%d", (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.FragmentFlags >> 14) & 0x1);
 }
-void NetworkPacketAnalyzer::IPV4_FRAGMENT_FLAGS_MF_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV4_FRAGMENT_FLAGS_MF_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength((((NetworkPacketAnalyzer*)_this)->ipv4.FragmentFlags >> 13) & 0x1);
+	length += IntegerLength((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.FragmentFlags >> 13) & 0x1);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", (((NetworkPacketAnalyzer*)_this)->ipv4.FragmentFlags >> 13) & 0x1);
-
+	sprintf(formatTag->Output, "%d", (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.FragmentFlags >> 13) & 0x1);
 }
-void NetworkPacketAnalyzer::IPV4_FRAGMENT_FLAGS_OFFSET_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV4_FRAGMENT_FLAGS_OFFSET_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->ipv4.FragmentFlags & 0x1FFF);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.FragmentFlags & 0x1FFF);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->ipv4.FragmentFlags & 0x1FFF);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.FragmentFlags & 0x1FFF);
 }
-void NetworkPacketAnalyzer::IPV4_TIME_TO_LIVE_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV4_TIME_TO_LIVE_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->ipv4.TimeToLive);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.TimeToLive);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->ipv4.TimeToLive);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.TimeToLive);
 }
-void NetworkPacketAnalyzer::IPV4_NEXT_PROTOCOL_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV4_NEXT_PROTOCOL_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->ipv4.NextProtocol);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.NextProtocol);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->ipv4.NextProtocol);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.NextProtocol);
 }
-void NetworkPacketAnalyzer::IPV4_CHECKSUM_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV4_CHECKSUM_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->ipv4.Checksum);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.Checksum);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->ipv4.Checksum);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.Checksum);
 }
-void NetworkPacketAnalyzer::IPV4_SOURCE_ADDRESS_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV4_SOURCE_ADDRESS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	operationNode->Output = (char *)malloc(16 * sizeof(char));
+	formatTag->Output = (char *)malloc(16 * sizeof(char));
 
-	sprintf(operationNode->Output, "%03d.%03d.%03d.%03d", ((NetworkPacketAnalyzer*)_this)->ipv4.SourceAddress[0], ((NetworkPacketAnalyzer*)_this)->ipv4.SourceAddress[1], ((NetworkPacketAnalyzer*)_this)->ipv4.SourceAddress[2], ((NetworkPacketAnalyzer*)_this)->ipv4.SourceAddress[3]);
-
-
+	sprintf(formatTag->Output, "%03d.%03d.%03d.%03d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.SourceAddress[0], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.SourceAddress[1], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.SourceAddress[2], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.SourceAddress[3]);
 }
-void NetworkPacketAnalyzer::IPV4_DESTINATION_ADDRESS_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV4_DESTINATION_ADDRESS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	operationNode->Output = (char *)malloc(16 * sizeof(char));
+	formatTag->Output = (char *)malloc(16 * sizeof(char));
 
-	sprintf(operationNode->Output, "%03d.%03d.%03d.%03d", ((NetworkPacketAnalyzer*)_this)->ipv4.DestinationAddress[0], ((NetworkPacketAnalyzer*)_this)->ipv4.DestinationAddress[1], ((NetworkPacketAnalyzer*)_this)->ipv4.DestinationAddress[2], ((NetworkPacketAnalyzer*)_this)->ipv4.DestinationAddress[3]);
-
-
+	sprintf(formatTag->Output, "%03d.%03d.%03d.%03d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.DestinationAddress[0], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.DestinationAddress[1], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.DestinationAddress[2], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.DestinationAddress[3]);
 }
 
-void NetworkPacketAnalyzer::IPV6_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV6_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	if (((NetworkPacketAnalyzer*)_this)->bIPv6)
-	{
-		operationNode->Output = (char *)malloc(315);
-
-		sprintf(operationNode->Output, "|-IPv6:\n| |-Versions: 0x%08x\n| | |-Version: 0x%01x\n| | |-DSCP: 0x%02x\n| | |-ECT: 0x%01x\n| | |-CE: 0x%01x\n| | `-FlowLabel: 0x%05x\n| |-PayloadLength: 0x%04x\n| |-NextProtocol: 0x%02x\n| |-HopLimit: 0x%02x\n| |-SourceAddress: %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x\n| `-DestinationAddress: %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x\n", ((NetworkPacketAnalyzer*)_this)->ipv6.Versions, (((NetworkPacketAnalyzer*)_this)->ipv6.Versions >> 28) & 0xF, (((NetworkPacketAnalyzer*)_this)->ipv6.Versions >> 22) & 0x3F, (((NetworkPacketAnalyzer*)_this)->ipv6.Versions >> 21) & 0x1, (((NetworkPacketAnalyzer*)_this)->ipv6.Versions >> 20) & 0x1, ((NetworkPacketAnalyzer*)_this)->ipv6.Versions & 0xFFFFF, ((NetworkPacketAnalyzer*)_this)->ipv6.PayloadLength, ((NetworkPacketAnalyzer*)_this)->ipv6.NextProtocol, ((NetworkPacketAnalyzer*)_this)->ipv6.HopLimit, ((NetworkPacketAnalyzer*)_this)->ipv6.SourceAddress[0], ((NetworkPacketAnalyzer*)_this)->ipv6.SourceAddress[1], ((NetworkPacketAnalyzer*)_this)->ipv6.SourceAddress[2], ((NetworkPacketAnalyzer*)_this)->ipv6.SourceAddress[3], ((NetworkPacketAnalyzer*)_this)->ipv6.SourceAddress[4], ((NetworkPacketAnalyzer*)_this)->ipv6.SourceAddress[5], ((NetworkPacketAnalyzer*)_this)->ipv6.SourceAddress[6], ((NetworkPacketAnalyzer*)_this)->ipv6.SourceAddress[7], ((NetworkPacketAnalyzer*)_this)->ipv6.DestinationAddress[0], ((NetworkPacketAnalyzer*)_this)->ipv6.DestinationAddress[1], ((NetworkPacketAnalyzer*)_this)->ipv6.DestinationAddress[2], ((NetworkPacketAnalyzer*)_this)->ipv6.DestinationAddress[3], ((NetworkPacketAnalyzer*)_this)->ipv6.DestinationAddress[4], ((NetworkPacketAnalyzer*)_this)->ipv6.DestinationAddress[5], ((NetworkPacketAnalyzer*)_this)->ipv6.DestinationAddress[6], ((NetworkPacketAnalyzer*)_this)->ipv6.DestinationAddress[7]);
-	}
+	if (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->bIPv6)
+		formatTag->Output = ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.ToString();
 	else
 	{
-		operationNode->Output = (char *)malloc(2);
-		operationNode->Output[0] = '0';
-		operationNode->Output[1] = '\0';
+		formatTag->Output = (char *)malloc(2);
+		formatTag->Output[0] = '0';
+		formatTag->Output[1] = '\0';
 	}
 }
-void NetworkPacketAnalyzer::IPV6_VERSIONS_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV6_VERSIONS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->ipv6.Versions);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.Versions);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->ipv6.Versions);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.Versions);
 }
-void NetworkPacketAnalyzer::IPV6_VERSIONS_VERSION_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV6_VERSIONS_VERSION_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength((((NetworkPacketAnalyzer*)_this)->ipv6.Versions >> 28) & 0xF);
+	length += IntegerLength((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.Versions >> 28) & 0xF);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", (((NetworkPacketAnalyzer*)_this)->ipv6.Versions >> 28) & 0xF);
-
+	sprintf(formatTag->Output, "%d", (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.Versions >> 28) & 0xF);
 }
-void NetworkPacketAnalyzer::IPV6_VERSIONS_DSCP_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV6_VERSIONS_DSCP_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength((((NetworkPacketAnalyzer*)_this)->ipv6.Versions >> 22) & 0x3F);
+	length += IntegerLength((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.Versions >> 22) & 0x3F);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", (((NetworkPacketAnalyzer*)_this)->ipv6.Versions >> 22) & 0x3F);
-
+	sprintf(formatTag->Output, "%d", (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.Versions >> 22) & 0x3F);
 }
-void NetworkPacketAnalyzer::IPV6_VERSIONS_ECT_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV6_VERSIONS_ECT_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength((((NetworkPacketAnalyzer*)_this)->ipv6.Versions >> 21) & 0x1);
+	length += IntegerLength((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.Versions >> 21) & 0x1);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", (((NetworkPacketAnalyzer*)_this)->ipv6.Versions >> 21) & 0x1);
-
+	sprintf(formatTag->Output, "%d", (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.Versions >> 21) & 0x1);
 }
-void NetworkPacketAnalyzer::IPV6_VERSIONS_CE_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV6_VERSIONS_CE_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength((((NetworkPacketAnalyzer*)_this)->ipv6.Versions >> 20) & 0x1);
+	length += IntegerLength((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.Versions >> 20) & 0x1);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", (((NetworkPacketAnalyzer*)_this)->ipv6.Versions >> 20) & 0x1);
-
+	sprintf(formatTag->Output, "%d", (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.Versions >> 20) & 0x1);
 }
-void NetworkPacketAnalyzer::IPV6_VERISONS_FLOW_LABEL_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV6_VERISONS_FLOW_LABEL_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->ipv6.Versions & 0xFFFFF);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.Versions & 0xFFFFF);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->ipv6.Versions & 0xFFFFF);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.Versions & 0xFFFFF);
 }
-void NetworkPacketAnalyzer::IPV6_PAYLOAD_LENGTH_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV6_PAYLOAD_LENGTH_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->ipv6.PayloadLength);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.PayloadLength);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->ipv6.PayloadLength);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.PayloadLength);
 }
-void NetworkPacketAnalyzer::IPV6_NEXT_PROTOCOL_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV6_NEXT_PROTOCOL_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->ipv6.NextProtocol);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.NextProtocol);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->ipv6.NextProtocol);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.NextProtocol);
 }
-void NetworkPacketAnalyzer::IPV6_HOP_LIMIT_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV6_HOP_LIMIT_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->ipv6.HopLimit);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.HopLimit);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->ipv6.HopLimit);
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.HopLimit);
 }
-void NetworkPacketAnalyzer::IPV6_SOURCE_ADDRESS_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV6_SOURCE_ADDRESS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	operationNode->Output = (char *)malloc(40);
+	formatTag->Output = (char *)malloc(40);
 
-	sprintf(operationNode->Output, "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x", ((NetworkPacketAnalyzer*)_this)->ipv6.SourceAddress[0], ((NetworkPacketAnalyzer*)_this)->ipv6.SourceAddress[1], ((NetworkPacketAnalyzer*)_this)->ipv6.SourceAddress[2], ((NetworkPacketAnalyzer*)_this)->ipv6.SourceAddress[3], ((NetworkPacketAnalyzer*)_this)->ipv6.SourceAddress[4], ((NetworkPacketAnalyzer*)_this)->ipv6.SourceAddress[5], ((NetworkPacketAnalyzer*)_this)->ipv6.SourceAddress[6], ((NetworkPacketAnalyzer*)_this)->ipv6.SourceAddress[7]);
-
+	sprintf(formatTag->Output, "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.SourceAddress[0], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.SourceAddress[1], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.SourceAddress[2], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.SourceAddress[3], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.SourceAddress[4], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.SourceAddress[5], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.SourceAddress[6], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.SourceAddress[7]);
 }
-void NetworkPacketAnalyzer::IPV6_DESTINATION_ADDRESS_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::IPV6_DESTINATION_ADDRESS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	operationNode->Output = (char *)malloc(40);
+	formatTag->Output = (char *)malloc(40);
 
-	sprintf(operationNode->Output, "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x", ((NetworkPacketAnalyzer*)_this)->ipv6.DestinationAddress[0], ((NetworkPacketAnalyzer*)_this)->ipv6.DestinationAddress[1], ((NetworkPacketAnalyzer*)_this)->ipv6.DestinationAddress[2], ((NetworkPacketAnalyzer*)_this)->ipv6.DestinationAddress[3], ((NetworkPacketAnalyzer*)_this)->ipv6.DestinationAddress[4], ((NetworkPacketAnalyzer*)_this)->ipv6.DestinationAddress[5], ((NetworkPacketAnalyzer*)_this)->ipv6.DestinationAddress[6], ((NetworkPacketAnalyzer*)_this)->ipv6.DestinationAddress[7]);
-
+	sprintf(formatTag->Output, "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.DestinationAddress[0], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.DestinationAddress[1], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.DestinationAddress[2], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.DestinationAddress[3], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.DestinationAddress[4], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.DestinationAddress[5], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.DestinationAddress[6], ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv6.DestinationAddress[7]);
 }
 
-void NetworkPacketAnalyzer::TCP_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::TCP_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	if (((NetworkPacketAnalyzer*)_this)->bTCP)
-	{
-		operationNode->Output = (char *)malloc(350);
-
-		sprintf(operationNode->Output, "|-TCP:\n| |-SourcePort: 0x%02x\n| |-DestinationPort: 0x%02x\n| |-SeqeunceNumber: 0x%08x\n| |-AcknowledgementNumber: 0x%08x\n| |-DataOffset: 0x%02x\n| |-Flags: 0x%02x\n| | |-FIN: 0x%01x\n| | |-SYN: 0x%01x\n| | |-RST: 0x%01x\n| | |-PSH: 0x%01x\n| | |-ACK: 0x%01x\n| | |-URG: 0x%01x\n| | |-ECE: 0x%01x\n| | `-CWR: 0x%01x\n| |-Window: 0x%04x\n| |-Checksum: 0x%04x\n| `-UrgentPointer: 0x%04x\n", ((NetworkPacketAnalyzer*)_this)->tcp.SourcePort, ((NetworkPacketAnalyzer*)_this)->tcp.DestinationPort, ((NetworkPacketAnalyzer*)_this)->tcp.SequenceNumber, ((NetworkPacketAnalyzer*)_this)->tcp.AcknowledgementNumber, ((NetworkPacketAnalyzer*)_this)->tcp.DataOffset, ((NetworkPacketAnalyzer*)_this)->tcp.Flags, ((NetworkPacketAnalyzer*)_this)->tcp.Flags & 0x1, (((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 1) & 0x1, (((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 2) & 0x1, (((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 3) & 0x1, (((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 4) & 0x1, (((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 5) & 0x1, (((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 6) & 0x1, (((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 7) & 0x1, ((NetworkPacketAnalyzer*)_this)->tcp.Window, ((NetworkPacketAnalyzer*)_this)->tcp.Checksum, ((NetworkPacketAnalyzer*)_this)->tcp.UrgentPointer);
-	}
+	if (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->bTCP)
+		formatTag->Output = ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.ToString();
 	else
 	{
-		operationNode->Output = (char *)malloc(2);
-		operationNode->Output[0] = '0';
-		operationNode->Output[1] = '\0';
+		formatTag->Output = (char *)malloc(2);
+		formatTag->Output[0] = '0';
+		formatTag->Output[1] = '\0';
 	}
 }
-void NetworkPacketAnalyzer::TCP_SOURCE_PORT_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::TCP_SOURCE_PORT_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->tcp.SourcePort);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.SourcePort);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->tcp.SourcePort);
-
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.SourcePort);
 }
-void NetworkPacketAnalyzer::TCP_DESTINATION_PORT_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::TCP_DESTINATION_PORT_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->tcp.DestinationPort);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.DestinationPort);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->tcp.DestinationPort);
-
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.DestinationPort);
 }
-void NetworkPacketAnalyzer::TCP_PAYLOAD_LENGTH_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::TCP_PAYLOAD_LENGTH_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->ipv4.TotalLength - ((((NetworkPacketAnalyzer*)_this)->ipv4.Versions & 0x0F) * 4) - (((((NetworkPacketAnalyzer*)_this)->tcp.DataOffset >> 4) & 0x0F) * 4));
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.TotalLength - ((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.Versions & 0x0F) * 4) - (((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.DataOffset >> 4) & 0x0F) * 4));
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->ipv4.TotalLength - ((((NetworkPacketAnalyzer*)_this)->ipv4.Versions & 0x0F) * 4) - (((((NetworkPacketAnalyzer*)_this)->tcp.DataOffset >> 4) & 0x0F) * 4));
-
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.TotalLength - ((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.Versions & 0x0F) * 4) - (((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.DataOffset >> 4) & 0x0F) * 4));
 }
-void NetworkPacketAnalyzer::TCP_ACKNOWLEDGEMENT_NUMBER_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::TCP_ACKNOWLEDGEMENT_NUMBER_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->tcp.AcknowledgementNumber);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.AcknowledgementNumber);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%u", ((NetworkPacketAnalyzer*)_this)->tcp.AcknowledgementNumber);
-
-
+	sprintf(formatTag->Output, "%u", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.AcknowledgementNumber);
 }
-void NetworkPacketAnalyzer::TCP_SEQUENCE_NUMBER_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::TCP_SEQUENCE_NUMBER_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->tcp.SequenceNumber);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.SequenceNumber);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%u", ((NetworkPacketAnalyzer*)_this)->tcp.SequenceNumber);
-
-
+	sprintf(formatTag->Output, "%u", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.SequenceNumber);
 }
-void NetworkPacketAnalyzer::TCP_DATA_OFFSET_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::TCP_DATA_OFFSET_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->tcp.DataOffset);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.DataOffset);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%u", ((NetworkPacketAnalyzer*)_this)->tcp.DataOffset);
-
+	sprintf(formatTag->Output, "%u", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.DataOffset);
 }
-void NetworkPacketAnalyzer::TCP_FLAGS_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::TCP_FLAGS_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->tcp.Flags);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Flags);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%u", ((NetworkPacketAnalyzer*)_this)->tcp.Flags);
-
+	sprintf(formatTag->Output, "%u", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Flags);
 }
-void NetworkPacketAnalyzer::TCP_FLAGS_FIN_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::TCP_FLAGS_FIN_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->tcp.Flags & 0x1);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Flags & 0x1);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", ((NetworkPacketAnalyzer*)_this)->tcp.Flags & 0x1);
-
-
+	sprintf(formatTag->Output, "%d", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Flags & 0x1);
 }
-void NetworkPacketAnalyzer::TCP_FLAGS_SYN_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::TCP_FLAGS_SYN_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength((((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 1) & 0x1);
+	length += IntegerLength((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Flags >> 1) & 0x1);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", (((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 1) & 0x1);
-
-
+	sprintf(formatTag->Output, "%d", (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Flags >> 1) & 0x1);
 }
-void NetworkPacketAnalyzer::TCP_FLAGS_RST_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::TCP_FLAGS_RST_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength((((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 2) & 0x1);
+	length += IntegerLength((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Flags >> 2) & 0x1);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", (((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 2) & 0x1);
-
-
+	sprintf(formatTag->Output, "%d", (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Flags >> 2) & 0x1);
 }
-void NetworkPacketAnalyzer::TCP_FLAGS_PSH_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::TCP_FLAGS_PSH_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength((((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 3) & 0x1);
+	length += IntegerLength((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Flags >> 3) & 0x1);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", (((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 3) & 0x1);
-
-
+	sprintf(formatTag->Output, "%d", (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Flags >> 3) & 0x1);
 }
-void NetworkPacketAnalyzer::TCP_FLAGS_ACK_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::TCP_FLAGS_ACK_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength((((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 4) & 0x1);
+	length += IntegerLength((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Flags >> 4) & 0x1);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", (((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 4) & 0x1);
-
-
+	sprintf(formatTag->Output, "%d", (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Flags >> 4) & 0x1);
 }
-void NetworkPacketAnalyzer::TCP_FLAGS_URG_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::TCP_FLAGS_URG_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength((((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 5) & 0x1);
+	length += IntegerLength((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Flags >> 5) & 0x1);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", (((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 5) & 0x1);
-
-
+	sprintf(formatTag->Output, "%d", (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Flags >> 5) & 0x1);
 }
-void NetworkPacketAnalyzer::TCP_FLAGS_ECE_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::TCP_FLAGS_ECE_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength((((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 6) & 0x1);
+	length += IntegerLength((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Flags >> 6) & 0x1);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", (((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 6) & 0x1);
-
-
+	sprintf(formatTag->Output, "%d", (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Flags >> 6) & 0x1);
 }
-void NetworkPacketAnalyzer::TCP_FLAGS_CWR_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::TCP_FLAGS_CWR_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength((((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 7) & 0x1);
+	length += IntegerLength((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Flags >> 7) & 0x1);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%d", (((NetworkPacketAnalyzer*)_this)->tcp.Flags >> 7) & 0x1);
-
-
+	sprintf(formatTag->Output, "%d", (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Flags >> 7) & 0x1);
 }
-void NetworkPacketAnalyzer::TCP_WINDOW_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::TCP_WINDOW_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->tcp.Window);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Window);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%u", ((NetworkPacketAnalyzer*)_this)->tcp.Window);
-
+	sprintf(formatTag->Output, "%u", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Window);
 }
-void NetworkPacketAnalyzer::TCP_CHECKSUM_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::TCP_CHECKSUM_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->tcp.Checksum);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Checksum);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%u", ((NetworkPacketAnalyzer*)_this)->tcp.Checksum);
-
+	sprintf(formatTag->Output, "%u", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.Checksum);
 }
-void NetworkPacketAnalyzer::TCP_URGENT_POINTER_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::TCP_URGENT_POINTER_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->tcp.UrgentPointer);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.UrgentPointer);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%u", ((NetworkPacketAnalyzer*)_this)->tcp.UrgentPointer);
-
+	sprintf(formatTag->Output, "%u", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.UrgentPointer);
 }
 
-void NetworkPacketAnalyzer::UDP_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::UDP_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
-	if (((NetworkPacketAnalyzer*)_this)->bUDP)
-	{
-		operationNode->Output = (char *)malloc(98);
-
-		sprintf(operationNode->Output, "|-UDP:\n| |-SourcePort: 0x%02x\n| |-DestinationPort: 0x%02x\n| |-Length: 0x%02x\n| `-Checksum: 0x%02x\n", ((NetworkPacketAnalyzer*)_this)->udp.SourcePort, ((NetworkPacketAnalyzer*)_this)->udp.DestinationPort, ((NetworkPacketAnalyzer*)_this)->udp.Length, ((NetworkPacketAnalyzer*)_this)->udp.Checksum);
-	}
+	if (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->bUDP)
+		formatTag->Output = ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->udp.ToString();
 	else
 	{
-		operationNode->Output = (char *)malloc(2);
-		operationNode->Output[0] = '0';
-		operationNode->Output[1] = '\0';
+		formatTag->Output = (char *)malloc(2);
+		formatTag->Output[0] = '0';
+		formatTag->Output[1] = '\0';
 	}
 }
-void NetworkPacketAnalyzer::UDP_SOURCE_PORT_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::UDP_SOURCE_PORT_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->udp.SourcePort);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->udp.SourcePort);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%u", ((NetworkPacketAnalyzer*)_this)->udp.SourcePort);
-
+	sprintf(formatTag->Output, "%u", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->udp.SourcePort);
 }
-void NetworkPacketAnalyzer::UDP_DESTINATION_PORT_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::UDP_DESTINATION_PORT_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->udp.DestinationPort);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->udp.DestinationPort);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%u", ((NetworkPacketAnalyzer*)_this)->udp.DestinationPort);
-
+	sprintf(formatTag->Output, "%u", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->udp.DestinationPort);
 }
-void NetworkPacketAnalyzer::UDP_LENGTH_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::UDP_LENGTH_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->udp.Length);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->udp.Length);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%u", ((NetworkPacketAnalyzer*)_this)->udp.Length);
-
+	sprintf(formatTag->Output, "%u", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->udp.Length);
 }
-void NetworkPacketAnalyzer::UDP_CHECKSUM_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::UDP_CHECKSUM_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int length = 1;
-	length += IntegerLength(((NetworkPacketAnalyzer*)_this)->udp.Checksum);
+	length += IntegerLength(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->udp.Checksum);
 
-	operationNode->Output = (char *)malloc(length);
+	formatTag->Output = (char *)malloc(length);
 
-	sprintf(operationNode->Output, "%u", ((NetworkPacketAnalyzer*)_this)->udp.Checksum);
-
+	sprintf(formatTag->Output, "%u", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->udp.Checksum);
 }
 
-void NetworkPacketAnalyzer::CONTENT_OPERATION_ROUTINE(void * _this, OperationNode * operationNode, char * input)
+void NetworkPacketAnalyzer::CONTENT_TAG_FUNCTION(void * networkPacketAnalyzer, FormatTag * formatTag, char * tagFunctionInput)
 {
 	int contentLength = 0;
 
-	if (((NetworkPacketAnalyzer*)_this)->bTCP)
+	if (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->bTCP)
 	{
-		contentLength = ((NetworkPacketAnalyzer*)_this)->ipv4.TotalLength - (((((NetworkPacketAnalyzer*)_this)->tcp.DataOffset >> 4) & 0x0F) * 4) - ((((NetworkPacketAnalyzer*)_this)->ipv4.Versions & 0xF) * 4);
-		((NetworkPacketAnalyzer*)_this)->startingPoint = (((((NetworkPacketAnalyzer*)_this)->tcp.DataOffset >> 4) & 0x0F) * 4) + ((((NetworkPacketAnalyzer*)_this)->ipv4.Versions & 0xF) * 4) + 14;
+		contentLength = ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.TotalLength - (((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.DataOffset >> 4) & 0x0F) * 4) - ((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.HeaderLength) * 4);
+		((NetworkPacketAnalyzer*)networkPacketAnalyzer)->startingPoint = (((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->tcp.DataOffset >> 4) & 0x0F) * 4) + ((((NetworkPacketAnalyzer*)networkPacketAnalyzer)->ipv4.Versions & 0xF) * 4) + 14;
 	}
 	else
-		contentLength = ((NetworkPacketAnalyzer*)_this)->header->len - ((NetworkPacketAnalyzer*)_this)->startingPoint;
+		contentLength = ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->header->len - ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->startingPoint;
 
 	int numberOfLines = (int)(contentLength) / 16;
 	if ((int)(contentLength) % 16 != 0)
 		numberOfLines++;
 
-	operationNode->Output = (char *)malloc(15 + numberOfLines * 83);
+	formatTag->Output = (char *)malloc(15 + numberOfLines * 83);
 
 	int currentIndex = 0;
 
-	sprintf(&operationNode->Output[currentIndex], "|-Content:\n"); currentIndex += 11;
+	sprintf(&formatTag->Output[currentIndex], "|-Content:\n"); currentIndex += 11;
 
 	for (int i = 0; i < (numberOfLines * 16); i++)
 	{
 		if (i % 16 == 0)
 		{
 			if ((i / 16) == (numberOfLines - 1))
-			{	sprintf(&operationNode->Output[currentIndex], "| `-0x%08x  ", i + ((NetworkPacketAnalyzer*)_this)->startingPoint); currentIndex += 16;	}
+			{	sprintf(&formatTag->Output[currentIndex], "| `-0x%08x  ", i + ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->startingPoint); currentIndex += 16;	}
 			else
-			{	sprintf(&operationNode->Output[currentIndex], "| |-0x%08x  ", i + ((NetworkPacketAnalyzer*)_this)->startingPoint); currentIndex += 16;	}
+			{	sprintf(&formatTag->Output[currentIndex], "| |-0x%08x  ", i + ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->startingPoint); currentIndex += 16;	}
 		}
 		if ((i + 1) % 16 == 0)
 		{
-			if (i < (int)(((NetworkPacketAnalyzer*)_this)->header->len - ((NetworkPacketAnalyzer*)_this)->startingPoint))
-			{	sprintf(&operationNode->Output[currentIndex], "%02x  ", ((NetworkPacketAnalyzer*)_this)->packet[i + ((NetworkPacketAnalyzer*)_this)->startingPoint]); currentIndex += 4;	}
+			if (i < (int)(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->header->len - ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->startingPoint))
+			{	sprintf(&formatTag->Output[currentIndex], "%02x  ", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->packet[i + ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->startingPoint]); currentIndex += 4;	}
 			else
-			{	sprintf(&operationNode->Output[currentIndex], "    "); currentIndex += 4;	}
+			{	sprintf(&formatTag->Output[currentIndex], "    "); currentIndex += 4;	}
 			for (int j = (i + 1) - 16; j < (i + 1); j++)
-				if (j < (int)(((NetworkPacketAnalyzer*)_this)->header->len - ((NetworkPacketAnalyzer*)_this)->startingPoint))
-					if (((NetworkPacketAnalyzer*)_this)->packet[j + ((NetworkPacketAnalyzer*)_this)->startingPoint] > 32 && ((NetworkPacketAnalyzer*)_this)->packet[j + ((NetworkPacketAnalyzer*)_this)->startingPoint] < 127)
-						sprintf(&operationNode->Output[currentIndex++], "%c", ((NetworkPacketAnalyzer*)_this)->packet[j + ((NetworkPacketAnalyzer*)_this)->startingPoint]);
+				if (j < (int)(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->header->len - ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->startingPoint))
+					if (((NetworkPacketAnalyzer*)networkPacketAnalyzer)->packet[j + ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->startingPoint] > 32 && ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->packet[j + ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->startingPoint] < 127)
+						sprintf(&formatTag->Output[currentIndex++], "%c", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->packet[j + ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->startingPoint]);
 					else
-						sprintf(&operationNode->Output[currentIndex++], ".");
+						sprintf(&formatTag->Output[currentIndex++], ".");
 				else
-					sprintf(&operationNode->Output[currentIndex++], " ");
-			sprintf(&operationNode->Output[currentIndex++], "\n");
+					sprintf(&formatTag->Output[currentIndex++], " ");
+			sprintf(&formatTag->Output[currentIndex++], "\n");
 		}
 		else if ((i + 1) % 8 == 0)
-			if (i < (int)(((NetworkPacketAnalyzer*)_this)->header->len - ((NetworkPacketAnalyzer*)_this)->startingPoint))
-			{	sprintf(&operationNode->Output[currentIndex], "%02x  ", ((NetworkPacketAnalyzer*)_this)->packet[i + ((NetworkPacketAnalyzer*)_this)->startingPoint]); currentIndex += 4;	}
+			if (i < (int)(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->header->len - ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->startingPoint))
+			{	sprintf(&formatTag->Output[currentIndex], "%02x  ", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->packet[i + ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->startingPoint]); currentIndex += 4;	}
 			else
-			{	sprintf(&operationNode->Output[currentIndex], "    "); currentIndex += 4;	}
-		else if (i < (int)(((NetworkPacketAnalyzer*)_this)->header->len - ((NetworkPacketAnalyzer*)_this)->startingPoint))
-		{	sprintf(&operationNode->Output[currentIndex], "%02x ", ((NetworkPacketAnalyzer*)_this)->packet[i + ((NetworkPacketAnalyzer*)_this)->startingPoint]); currentIndex += 3;	}
+			{	sprintf(&formatTag->Output[currentIndex], "    "); currentIndex += 4;	}
+		else if (i < (int)(((NetworkPacketAnalyzer*)networkPacketAnalyzer)->header->len - ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->startingPoint))
+		{	sprintf(&formatTag->Output[currentIndex], "%02x ", ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->packet[i + ((NetworkPacketAnalyzer*)networkPacketAnalyzer)->startingPoint]); currentIndex += 3;	}
 		else
-		{	sprintf(&operationNode->Output[currentIndex], "   "); currentIndex += 3;}
+		{	sprintf(&formatTag->Output[currentIndex], "   "); currentIndex += 3;}
 	}
-	sprintf(&operationNode->Output[currentIndex], "`-\n");
+	sprintf(&formatTag->Output[currentIndex], "`-\n");
 }
 
 #endif
