@@ -23,8 +23,6 @@ void Run(int numberOfPackets, char * formatString, char * filterString);
 ```C++
 #include "NetworkPacketAnalyzer.h"
 
-#define MY_IP_ADDRESS 192.168.001.037
-
 int main()
 {
 	NetworkPacketAnalyzer networkPacketAnalyzer("\\Device\\NPF_{14090526-0B6F-4B14-B801-2AF0CECF917A}", 1000);
