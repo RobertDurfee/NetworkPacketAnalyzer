@@ -19,12 +19,12 @@ When the `Run` method is called, the number of packets to be parsed needs to be 
 ### Tags
 <pre>
 {IF:{<b>0/1</b>};}
-{EQUALS:{<b>A</b>},{<b>B</b>};}
+{EQUALS:{<b>A</b>},{<b>B</b>},...,{<b>N</b>};}
 {NOT:{<b>0/1</b>};}
-{OR:{<b>0/1</b>},{<b>0/1</b>};}
-{AND:{<b>0/1</b>},{<b>0/1</b>};}
-{ODD:{<b>0/1</b>},{<b>0/1</b>};}
-{XOR:{<b>0/1</b>},{<b>0/1</b>};}
+{OR:{<b>0/1</b>},{<b>0/1</b>},...,{<b>0/1</b>};}
+{AND:{<b>0/1</b>},{<b>0/1</b>},...,{<b>0/1</b>};}
+{ODD:{<b>0/1</b>},{<b>0/1</b>},...,{<b>0/1</b>};}
+{XOR:{<b>0/1</b>},{<b>0/1</b>},...,{<b>0/1</b>};}
 
 {LEADING:{<b>CHARACTER</b>},{<b>WIDTH</b>};}
 {TRAILING:{<b>CHARACTER</b>},{<b>WIDTH</b>};}
@@ -280,3 +280,4 @@ This example works in the same way as the previous but the incredibly more compl
 | 12:37:46 | 192.168.001.037:63993 <-- 104.198.052.053:00080 | 00000 | S0308861845 - 0712899852A | F---A--- |
 | 12:37:46 | 192.168.001.037:63993 --> 104.198.052.053:00080 | 00000 | A0308861846 - 0712899852S | ----A--- |
 ```
+The incredibily different outputs demonstrate just how flexible this class can be. However, the format strings can quickly become complex.
