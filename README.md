@@ -1,5 +1,5 @@
 # NetworkPacketAnalyzer
-C++ class for displaying parsed internet packet headers according to a given format string.
+C++ class for displaying parsed internet packet headers according to given format and filter strings.
 
 ### Disclaimer
 This is not production-worthy code! View this simply as a proof-of-concept.
