@@ -2,7 +2,7 @@
 C++ class for displaying parsed internet packet headers according to given format and filter strings.
 
 ### Disclaimer
-This is not production-worthy code! View this simply as a proof-of-concept.
+This is not production-worthy code! View this simply as a proof-of-concept. Preconditions are implicit. No error checking exists.
 
 ### Initialization
 ```C++
